@@ -10,10 +10,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useFreight } from "@/lib/freight-store";
+import { RoleSelect } from "./RoleSelect";
+import { RoleBadge } from "./RoleBadge";
 import { truncateAddress } from "@/lib/midnight-api";
 
 export function WalletConnect({ size = "default" }: { size?: "default" | "lg" }) {
-  const { wallet, connecting, connect, disconnect } = useFreight();
+  const { wallet, role, connecting, connect, disconnect } = useFreight();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -31,26 +33,44 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
         >
           <Wallet className="size-4" aria-hidden="true" />
           {wallet ? truncateAddress(wallet.address) : "Connect Wallet"}
+          {wallet && role ? (
+            <span className="ml-1" aria-label={`Role: ${role}`}>
+              {role === "shipper" ? "🚢" : "🚚"}
+            </span>
+          ) : null}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{wallet ? "Wallet connected" : "Connect a Midnight wallet"}</DialogTitle>
+          <DialogTitle>
+            {!wallet
+              ? "Connect a Midnight wallet"
+              : role
+                ? "Wallet connected"
+                : "Choose your role"}
+          </DialogTitle>
           <DialogDescription>
-            {wallet
+            {wallet && !role
+              ? "Your role decides which actions this session can take on-chain."
+              : wallet
               ? "This session signs shielded transactions locally. Private inputs never leave your device."
               : "FreightVeil uses a shielded address. Rates, distances and budgets stay in your wallet."}
           </DialogDescription>
         </DialogHeader>
 
-        {wallet ? (
+        {wallet && !role ? (
+          <RoleSelect onSelected={() => setOpen(false)} />
+        ) : wallet ? (
           <div className="space-y-4">
             <div className="veil-panel p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                 Shielded address
               </p>
               <p className="mt-2 break-all font-mono text-sm text-primary">{wallet.address}</p>
-              <p className="mt-3 text-xs text-muted-foreground">{wallet.network}</p>
+              <div className="mt-3 flex items-center gap-2">
+                {role ? <RoleBadge role={role} /> : null}
+                <p className="text-xs text-muted-foreground">{wallet.network}</p>
+              </div>
             </div>
             <div className="flex gap-2">
               <Button

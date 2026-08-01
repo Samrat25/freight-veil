@@ -11,8 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CarrierRouteImport } from './routes/carrier'
+import { Route as CreateBatchRouteImport } from './routes/create-batch'
 import { Route as ExplorerRouteImport } from './routes/explorer'
+import { Route as MyClaimsRouteImport } from './routes/my-claims'
+import { Route as MyShipmentsRouteImport } from './routes/my-shipments'
 import { Route as ShipperRouteImport } from './routes/shipper'
+import { Route as SubmitClaimRouteImport } from './routes/submit-claim'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,9 +28,24 @@ const CarrierRoute = CarrierRouteImport.update({
   path: '/carrier',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreateBatchRoute = CreateBatchRouteImport.update({
+  id: '/create-batch',
+  path: '/create-batch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExplorerRoute = ExplorerRouteImport.update({
   id: '/explorer',
   path: '/explorer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyClaimsRoute = MyClaimsRouteImport.update({
+  id: '/my-claims',
+  path: '/my-claims',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyShipmentsRoute = MyShipmentsRouteImport.update({
+  id: '/my-shipments',
+  path: '/my-shipments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShipperRoute = ShipperRouteImport.update({
@@ -34,39 +53,85 @@ const ShipperRoute = ShipperRouteImport.update({
   path: '/shipper',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SubmitClaimRoute = SubmitClaimRouteImport.update({
+  id: '/submit-claim',
+  path: '/submit-claim',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/carrier': typeof CarrierRoute
+  '/create-batch': typeof CreateBatchRoute
   '/explorer': typeof ExplorerRoute
+  '/my-claims': typeof MyClaimsRoute
+  '/my-shipments': typeof MyShipmentsRoute
   '/shipper': typeof ShipperRoute
+  '/submit-claim': typeof SubmitClaimRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/carrier': typeof CarrierRoute
+  '/create-batch': typeof CreateBatchRoute
   '/explorer': typeof ExplorerRoute
+  '/my-claims': typeof MyClaimsRoute
+  '/my-shipments': typeof MyShipmentsRoute
   '/shipper': typeof ShipperRoute
+  '/submit-claim': typeof SubmitClaimRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/carrier': typeof CarrierRoute
+  '/create-batch': typeof CreateBatchRoute
   '/explorer': typeof ExplorerRoute
+  '/my-claims': typeof MyClaimsRoute
+  '/my-shipments': typeof MyShipmentsRoute
   '/shipper': typeof ShipperRoute
+  '/submit-claim': typeof SubmitClaimRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/carrier' | '/explorer' | '/shipper'
+  fullPaths:
+    | '/'
+    | '/carrier'
+    | '/create-batch'
+    | '/explorer'
+    | '/my-claims'
+    | '/my-shipments'
+    | '/shipper'
+    | '/submit-claim'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/carrier' | '/explorer' | '/shipper'
-  id: '__root__' | '/' | '/carrier' | '/explorer' | '/shipper'
+  to:
+    | '/'
+    | '/carrier'
+    | '/create-batch'
+    | '/explorer'
+    | '/my-claims'
+    | '/my-shipments'
+    | '/shipper'
+    | '/submit-claim'
+  id:
+    | '__root__'
+    | '/'
+    | '/carrier'
+    | '/create-batch'
+    | '/explorer'
+    | '/my-claims'
+    | '/my-shipments'
+    | '/shipper'
+    | '/submit-claim'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CarrierRoute: typeof CarrierRoute
+  CreateBatchRoute: typeof CreateBatchRoute
   ExplorerRoute: typeof ExplorerRoute
+  MyClaimsRoute: typeof MyClaimsRoute
+  MyShipmentsRoute: typeof MyShipmentsRoute
   ShipperRoute: typeof ShipperRoute
+  SubmitClaimRoute: typeof SubmitClaimRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,11 +150,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CarrierRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/create-batch': {
+      id: '/create-batch'
+      path: '/create-batch'
+      fullPath: '/create-batch'
+      preLoaderRoute: typeof CreateBatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/explorer': {
       id: '/explorer'
       path: '/explorer'
       fullPath: '/explorer'
       preLoaderRoute: typeof ExplorerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-claims': {
+      id: '/my-claims'
+      path: '/my-claims'
+      fullPath: '/my-claims'
+      preLoaderRoute: typeof MyClaimsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-shipments': {
+      id: '/my-shipments'
+      path: '/my-shipments'
+      fullPath: '/my-shipments'
+      preLoaderRoute: typeof MyShipmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shipper': {
@@ -99,14 +185,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShipperRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/submit-claim': {
+      id: '/submit-claim'
+      path: '/submit-claim'
+      fullPath: '/submit-claim'
+      preLoaderRoute: typeof SubmitClaimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CarrierRoute: CarrierRoute,
+  CreateBatchRoute: CreateBatchRoute,
   ExplorerRoute: ExplorerRoute,
+  MyClaimsRoute: MyClaimsRoute,
+  MyShipmentsRoute: MyShipmentsRoute,
   ShipperRoute: ShipperRoute,
+  SubmitClaimRoute: SubmitClaimRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
