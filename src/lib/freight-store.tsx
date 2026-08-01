@@ -35,7 +35,6 @@ const seedBatches: ShipmentBatch[] = [
 const seedClaims: LegClaim[] = [
   {
     claimId: "LEG-4C1A9",
-    owner: DEMO_OWNER,
     batchId: "FV-2026-8A31C4",
     owner: DEMO_OWNER,
     status: "settled",
@@ -44,7 +43,6 @@ const seedClaims: LegClaim[] = [
   },
   {
     claimId: "LEG-9D02F",
-    owner: DEMO_OWNER,
     batchId: "FV-2026-2D77F0",
     owner: DEMO_OWNER,
     status: "verified",
