@@ -10,33 +10,63 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CarrierRouteImport } from './routes/carrier'
+import { Route as ExplorerRouteImport } from './routes/explorer'
+import { Route as ShipperRouteImport } from './routes/shipper'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CarrierRoute = CarrierRouteImport.update({
+  id: '/carrier',
+  path: '/carrier',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExplorerRoute = ExplorerRouteImport.update({
+  id: '/explorer',
+  path: '/explorer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShipperRoute = ShipperRouteImport.update({
+  id: '/shipper',
+  path: '/shipper',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/carrier': typeof CarrierRoute
+  '/explorer': typeof ExplorerRoute
+  '/shipper': typeof ShipperRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/carrier': typeof CarrierRoute
+  '/explorer': typeof ExplorerRoute
+  '/shipper': typeof ShipperRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/carrier': typeof CarrierRoute
+  '/explorer': typeof ExplorerRoute
+  '/shipper': typeof ShipperRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/carrier' | '/explorer' | '/shipper'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/carrier' | '/explorer' | '/shipper'
+  id: '__root__' | '/' | '/carrier' | '/explorer' | '/shipper'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CarrierRoute: typeof CarrierRoute
+  ExplorerRoute: typeof ExplorerRoute
+  ShipperRoute: typeof ShipperRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +78,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/carrier': {
+      id: '/carrier'
+      path: '/carrier'
+      fullPath: '/carrier'
+      preLoaderRoute: typeof CarrierRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explorer': {
+      id: '/explorer'
+      path: '/explorer'
+      fullPath: '/explorer'
+      preLoaderRoute: typeof ExplorerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipper': {
+      id: '/shipper'
+      path: '/shipper'
+      fullPath: '/shipper'
+      preLoaderRoute: typeof ShipperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CarrierRoute: CarrierRoute,
+  ExplorerRoute: ExplorerRoute,
+  ShipperRoute: ShipperRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
