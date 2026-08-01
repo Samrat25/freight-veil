@@ -13,6 +13,8 @@ export type ClaimStatus = "pending" | "verified" | "settled" | "rejected";
 
 export interface ShipmentBatch {
   batchId: string;
+  /** Shielded address of the shipper that locked this batch. */
+  owner: string;
   status: BatchStatus;
   createdAt: string;
   carrierCount: number;
@@ -22,6 +24,8 @@ export interface ShipmentBatch {
 
 export interface LegClaim {
   claimId: string;
+  /** Shielded address of the carrier that filed this claim. */
+  owner: string;
   batchId: string;
   status: ClaimStatus;
   submittedAt: string;
@@ -29,9 +33,13 @@ export interface LegClaim {
   claimCommitment: string;
 }
 
+export type AppRole = "shipper" | "carrier";
+
 export interface WalletSession {
   address: string;
   network: string;
+  /** Chosen once per session; pairs with the address to form the session identity. */
+  role: AppRole | null;
 }
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -62,6 +70,7 @@ export async function connectWallet(): Promise<WalletSession> {
   return {
     address: `mn_shield-addr_test1${randomHex(38)}`,
     network: "Midnight Testnet-02",
+    role: null,
   };
 }
 
@@ -78,11 +87,13 @@ export async function createShipmentBatch(input: {
   batchId: string;
   totalBudget: string;
   carrierCount: number;
+  owner: string;
 }): Promise<ShipmentBatch> {
   await wait(1600);
   void input.totalBudget; // discarded on purpose — private witness, never stored client-side
   return {
     batchId: input.batchId,
+    owner: input.owner,
     status: "locked",
     createdAt: new Date().toISOString(),
     carrierCount: input.carrierCount,
@@ -114,12 +125,14 @@ export async function submitCarrierClaim(input: {
   batchId: string;
   distanceKm: string;
   agreedRate: string;
+  owner: string;
 }): Promise<LegClaim> {
   await wait(1700);
   void input.distanceKm;
   void input.agreedRate;
   return {
     claimId: `LEG-${randomHex(5).toUpperCase()}`,
+    owner: input.owner,
     batchId: input.batchId.trim().toUpperCase(),
     status: "pending",
     submittedAt: new Date().toISOString(),
