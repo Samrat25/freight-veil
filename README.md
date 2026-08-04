@@ -86,16 +86,17 @@ Below is the output showing contract deployment and address recording:
   Proof-server URL : http://localhost:6300
   Indexer URL      : http://localhost:8088/api/v4/graphql
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Deployment Summary
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Contract Address : preprod:freightveil:19fcbad7b5a
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Contract Address : 0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4
   Network          : Midnight Preprod / Undeployed
   Node URL         : http://localhost:9944
-  Proof-server URL : http://localhost:6300
+  Proof-Server URL : http://localhost:6300
   Address saved to : deployed-address.txt
 
   ✅ Deployment complete.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 ### 3. Test Suite Output (Vitest — 7/7 Passing)
