@@ -30,3 +30,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment secrets — never commit
+.env
+.env.local
+
+# Compact compiler output (generated at build time)
+managed/*.cmi
+managed/*.ts
+!managed/.gitkeep
+
+# Supabase local state
+.supabase/
+supabase/.temp/

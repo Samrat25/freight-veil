@@ -9,9 +9,21 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "npx vitest run",
+    "test:watch": "npx vitest",
+    "test:coverage": "npx vitest run --coverage",
+    "deploy": "npx tsx scripts/deploy.ts",
+    "deploy:dry-run": "npx tsx scripts/deploy.ts --dry-run",
+    "fund:wallet": "npx tsx scripts/fund-wallet.ts",
+    "docker:up": "docker compose -f standalone.yml up -d",
+    "docker:down": "docker compose -f standalone.yml down",
+    "docker:reset": "docker compose -f standalone.yml down -v",
+    "docker:logs": "docker compose -f standalone.yml logs -f",
+    "docker:health": "docker compose -f standalone.yml ps"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.47.2",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -66,6 +78,8 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.8",
+    "vitest": "^2.1.8",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "^2.8.4",
     "@types/node": "^22.16.5",
