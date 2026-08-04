@@ -1,0 +1,121 @@
+# FreightVeil — Midnight Local Dev Stack (Docker)
+#
+# Runs three services for the 'undeployed' local network:
+#   • midnight-node   → ws://localhost:9944   (Substrate / Midnight blockchain)
+#   • midnight-indexer → http://localhost:8088  (GraphQL indexer)
+#   • proof-server     → http://localhost:6300  (ZK proof generation)
+#
+# Usage:
+#   docker compose -f standalone.yml up -d        # start in background
+#   docker compose -f standalone.yml logs -f      # tail logs
+#   docker compose -f standalone.yml down -v      # stop + wipe state
+#
+# ─── Version matrix (keep these in sync!) ────────────────────────────────────
+#   midnight-node:       0.22.3
+#   indexer-standalone:  4.0.1
+#   proof-server:        8.0.3
+#
+# Changing to Preprod later: just update .env with MIDNIGHT_NETWORK=preprod
+# and the preprod URLs — no changes to this file needed.
+# ─────────────────────────────────────────────────────────────────────────────
+
+networks:
+  midnight-local:
+    driver: bridge
+
+volumes:
+  node-data:
+  indexer-data:
+  proof-server-data:
+
+services:
+
+  # ─── Midnight Node ───────────────────────────────────────────────────────────
+  # Substrate-based blockchain node running in 'undeployed' (local dev) mode.
+  # Exposes WebSocket RPC on 9944 and HTTP RPC on 9933.
+  midnight-node:
+    image: midnightntwrk/midnight-node:0.22.3
+    container_name: freightveil-midnight-node
+    restart: unless-stopped
+    ports:
+      - "9944:9944"   # WebSocket RPC (wallet / SDK connection)
+      - "9933:9933"   # HTTP RPC
+      - "30333:30333" # P2P (not strictly needed for local dev)
+    volumes:
+      - node-data:/data
+      - ./mock_registrations.json:/app/mock_registrations.json
+    environment:
+      RUST_LOG: info
+      USE_MAIN_CHAIN_FOLLOWER_MOCK: "true"
+      MOCK_REGISTRATIONS_FILE: "/app/mock_registrations.json"
+    command:
+      - --dev                    # single-node dev chain (no peers needed)
+      - --rpc-external           # allow external RPC connections
+      - --rpc-cors=all           # allow browser connections
+      - --base-path=/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9944 || true"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - midnight-local
+
+  # ─── Indexer ─────────────────────────────────────────────────────────────────
+  # Standalone indexer: combines Chain, Wallet, and SPO indexers with an
+  # in-process SQLite DB. Exposes GraphQL API on 8088.
+  midnight-indexer:
+    image: midnightntwrk/indexer-standalone:4.0.1
+    container_name: freightveil-midnight-indexer
+    restart: unless-stopped
+    depends_on:
+      midnight-node:
+        condition: service_healthy
+    ports:
+      - "8088:8088"   # GraphQL HTTP + WebSocket endpoint
+    volumes:
+      - indexer-data:/data
+    environment:
+      # Node WebSocket connection (internal Docker network)
+      APP__INFRA__NODE_WS_URL: "ws://midnight-node:9944"
+      # Secret for encrypting wallet state (32-byte hex — safe to keep here for local dev)
+      APP__INFRA__SECRET: "0000000000000000000000000000000000000000000000000000000000000001"
+      # SQLite data directory
+      APP__INFRA__DB_PATH: "/data/indexer.db"
+      # Network
+      APP__INFRA__NETWORK: "undeployed"
+      RUST_LOG: info
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8088/api/v4/graphql"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    networks:
+      - midnight-local
+
+  # ─── Proof Server ─────────────────────────────────────────────────────────────
+  # Generates ZK proofs for smart contract transactions.
+  # Must be running before any contract call that involves a proof.
+  # First startup downloads BLS12-381 parameters (~500 MB) — be patient!
+  proof-server:
+    image: midnightntwrk/proof-server:8.0.3
+    container_name: freightveil-proof-server
+    restart: unless-stopped
+    ports:
+      - "6300:6300"   # Proof server HTTP API
+    volumes:
+      - proof-server-data:/data   # caches ZK params so first-run download isn't repeated
+    environment:
+      RUST_LOG: info
+      # Storage path for ZK parameter cache
+      PROOF_SERVER_DATA_PATH: "/data"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:6300/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s  # ZK param download can take a while on first run
+    networks:
+      - midnight-local
