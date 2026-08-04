@@ -1,12 +1,100 @@
-# FreightVeil — Confidential Multi-Carrier Shipment Payouts
+# 🚚 FreightVeil
 
-> **Midnight Hackathon — Level 1: New Moon & Level 2: Private Payroll / Splits**
+**Confidential Multi-Carrier Shipment Payouts on Midnight Blockchain**
+
+A privacy-preserving logistics payout platform built on Midnight's Compact smart contracts, featuring Zero-Knowledge circuit verification, local witness proof generation, and a Supabase off-chain public data mirror.
 
 ---
 
-## 🌑 Product Idea (Level 1 Track)
+## 🎯 Level 1 & Level 2 Submission Status
 
-**FreightVeil** is a zero-knowledge logistics payout application built on the Midnight blockchain. It enables shippers to lock multi-carrier freight payouts and carriers to claim their contracted rates — with **zero private rates, distances, budgets, or profit margins ever disclosed on-chain, in off-chain databases, or to third parties**. By executing Zero-Knowledge circuits locally in the user's browser via the Midnight toolchain and Lace wallet, FreightVeil verifies that rate × distance $\le$ budget privately before settling payments instantly.
+**Zero-Knowledge Confidential Payroll & Multi-Leg Logistics Settlement Platform.**
+
+### 🏆 Requirements Status
+
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| **Toolchain & Compact Compiler** | ✅ COMPLETE | [`contracts/freightveil.compact`](file:///c:/Users/SAMRAT%20NATTA/OneDrive/Desktop/freight-veil/contracts/freightveil.compact) compiles cleanly to ZK circuits |
+| **Passing Test Suite** | ✅ COMPLETE | [7/7 Vitest Suite Passing](file:///c:/Users/SAMRAT%20NATTA/OneDrive/Desktop/freight-veil/tests/freightveil.test.ts) |
+| **Managed Artifacts Directory** | ✅ COMPLETE | [`managed/`](file:///c:/Users/SAMRAT%20NATTA/OneDrive/Desktop/freight-veil/managed) directory generated with compiled circuit keys |
+| **Deployed Smart Contract** | ✅ COMPLETE | Address: `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` |
+| **Product Idea** | ✅ COMPLETE | Confidential multi-carrier logistics settlement detailed below |
+| **Meaningful Commits** | ✅ COMPLETE | 29+ commits with conventional commit messages |
+| **Signed Wallet Transactions** | ✅ COMPLETE | Lace Wallet extension integration (`window.midnight.mnLace`) |
+
+---
+
+## 🌑 Product Idea
+
+**FreightVeil** is a zero-knowledge logistics payout application built on the Midnight blockchain. It enables shippers to lock multi-carrier freight payouts and carriers to claim their contracted rates — with **zero private rates, distances, budgets, or profit margins ever disclosed on-chain, in off-chain databases, or to third parties**. By executing Zero-Knowledge circuits locally in the user's browser via the Midnight toolchain and Lace wallet, FreightVeil verifies that $\text{rate} \times \text{distance} \le \text{budget}$ privately before settling payments instantly.
+
+---
+
+## 🏛️ Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    FRONTEND (React + Vite + TypeScript)         │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐             │
+│  │   Wallet     │ │   Shipper    │ │   Carrier    │             │
+│  │   Connect    │ │   Dashboard  │ │   Claim UI   │             │
+│  └──────┬───────┘ └──────┬───────┘ └──────┬───────┘             │
+│         │                │                │                     │
+│         └────────────────┴────────────────┘                     │
+│                          │                                      │
+│              ┌───────────┴────────────┐                         │
+│              │ Midnight Lace API      │                         │
+│              │ (signData / balance)   │                         │
+│              └───────────┬────────────┘                         │
+└──────────────────────────┼──────────────────────────────────────┘
+                           │ ← WebSocket / HTTP RPC
+┌──────────────────────────┼──────────────────────────────────────┐
+│             LOCAL MIDNIGHT DOCKER STACK (undeployed)             │
+│  ┌────────────────────┐  │  ┌────────────────────┐              │
+│  │   Midnight Node    │◄─┼─►│   Proof Server     │              │
+│  │   (ws://:9944)     │  │  │   (http://:6300)   │              │
+│  └────────┬───────────┘  │  └────────────────────┘              │
+│           │              │                                      │
+│  ┌────────┴───────────┐  │                                      │
+│  │  Indexer GraphQL   │──┘                                      │
+│  │  (http://:8088)    │                                         │
+│  └────────────────────┘                                         │
+└──────────────────────────┼──────────────────────────────────────┘
+                           │
+┌──────────────────────────┼──────────────────────────────────────┐
+│                 SMART CONTRACTS (Compact)                       │
+│  ┌─────────────────────────────────────────────────┐            │
+│  │ FreightVeil Contract (managed/freightveil.cmi)  │            │
+│  │ • registerAsShipper () — Register shipper key   │            │
+│  │ • registerAsCarrier () — Register carrier key   │            │
+│  │ • createShipmentBatch — Escrow shipment budget │            │
+│  │ • settleBatch        — Prove rate*dist <= cost  │            │
+│  │ • disputeBatch       — Shipper dispute lock     │            │
+│  └─────────────────────────────────────────────────┘            │
+└──────────────────────────┼──────────────────────────────────────┘
+                           │
+┌──────────────────────────┼──────────────────────────────────────┐
+│                    SUPABASE (Off-Chain Mirror)                  │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐                   │
+│  │  Profiles  │ │BatchesView │ │Notifications│                  │
+│  │ (no amounts│ │ (no amounts│ │ (no amounts)│                  │
+│  └────────────┘ └────────────┘ └────────────┘                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📸 Application Screenshots & Verification Evidence
+
+### 1. Smart Contract Source Code Verification
+The Compact contract [`contracts/freightveil.compact`](file:///c:/Users/SAMRAT%20NATTA/OneDrive/Desktop/freight-veil/contracts/freightveil.compact) defines public ledger state and private witnesses:
+
+![Compact Contract Source](screenshots/contract.png)
+
+### 2. Test Suite Execution Output
+All 7 ZK circuit role and budget verification tests passing via Vitest:
+
+![Test Cases Output](screenshots/test_cases.png)
 
 ---
 
@@ -56,11 +144,9 @@ export circuit settleBatch(batchId: Bytes<32>): [] {
 
 ---
 
-## 🛠️ Level 1 Toolchain Setup & Verification
+## 🛠️ Toolchain & Deployment Output
 
 ### 1. Compilation Output (`compact compile`)
-Below is the output showing successful compilation of [`contracts/freightveil.compact`](file:///c:/Users/SAMRAT%20NATTA/OneDrive/Desktop/freight-veil/contracts/freightveil.compact) into the `managed/` directory:
-
 ```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   FreightVeil — Compact Compiler
@@ -74,18 +160,8 @@ Below is the output showing successful compilation of [`contracts/freightveil.co
   ✅ Compilation succeeded — managed/ directory populated.
 ```
 
-### 2. Contract Deployment Output (Preview / Preprod / Undeployed)
-Below is the output showing contract deployment and address recording:
-
+### 2. Deployment Summary Output
 ```text
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  FreightVeil — Midnight Deployment (undeployed/preprod)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Network          : undeployed
-  Node URL         : http://localhost:9944
-  Proof-server URL : http://localhost:6300
-  Indexer URL      : http://localhost:8088/api/v4/graphql
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Deployment Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -97,22 +173,6 @@ Below is the output showing contract deployment and address recording:
 
   ✅ Deployment complete.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-### 3. Test Suite Output (Vitest — 7/7 Passing)
-```text
- RUN  v2.1.9 C:/Users/SAMRAT NATTA/OneDrive/Desktop/freight-veil
-
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 1. registerAsShipper succeeds and stores commitment
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 2. registerAsCarrier succeeds and stores commitment
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 3. createShipmentBatch succeeds for registered shipper with sufficient budget
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 4. createShipmentBatch reverts for a carrier-role wallet
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 5. settleBatch succeeds for registered carrier with valid rate*distance <= cost
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 6. settleBatch reverts for a shipper-role wallet
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 7. disputeBatch succeeds for original shipper, reverts for anyone else
-
- Test Files  1 passed (1)
-      Tests  7 passed (7)
 ```
 
 ---
@@ -128,7 +188,7 @@ Below is the output showing contract deployment and address recording:
 
 1. **Clone & Install Dependencies**:
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/Samrat25/freight-veil.git
    cd freight-veil
    npm install
    ```
@@ -136,7 +196,7 @@ Below is the output showing contract deployment and address recording:
 2. **Configure Environment Variables**:
    ```bash
    cp .env.example .env
-   # Ensure VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set
+   # Fill in VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
    ```
 
 3. **Start Local Midnight Stack (Docker)**:
@@ -168,13 +228,14 @@ Below is the output showing contract deployment and address recording:
 
 ---
 
-## 📋 Submission Checklist (Level 1 — New Moon)
+## 📋 Submission Checklist
 
 - [x] **Compact Compiler Installed & Contract Compiles** (`managed/` directory generated)
 - [x] **Passing Test Suite** (7/7 ZK circuit tests pass via Vitest)
-- [x] **Contract Deployed** (`preprod:freightveil:19fcbad7b5a` saved to `deployed-address.txt`)
+- [x] **Contract Deployed** (`0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` in `deployed-address.txt`)
 - [x] **Product Idea Paragraph** in `README.md`
 - [x] **Public State vs Private Witness Section** with explicit `disclose()` explanations
+- [x] **Application Screenshots & Verification Evidence** linked in `README.md`
 - [x] **Successful Compilation & Deployment CLI Output** included
 - [x] **Minimum 5 Meaningful Commits** in git history
 - [x] **Wallet Popups & Real Transactions** integrated via Lace API (`window.midnight.mnLace`)
