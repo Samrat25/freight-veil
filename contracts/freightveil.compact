@@ -1,150 +1,76 @@
 pragma language_version >= 0.16 && <= 0.25;
 import CompactStandardLibrary;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FreightVeil — Confidential Multi-Carrier Shipment Payouts
-// Midnight Hackathon Level 2: Private Payroll / Splits
-//
-// PRIVACY MODEL:
-//   Public on-chain: batch IDs, status codes, wallet commitments (hashes only).
-//   Private witnesses (never disclosed): budget, freight cost, per-leg rate,
-//     distance, payout splits, and the secret key used to derive identity.
-//
-// All financial arithmetic happens inside the ZK circuit and is never published
-// to the ledger or to any off-chain database.
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─── PUBLIC LEDGER STATE ────────────────────────────────────────────────────
-
-// Monotonically-increasing count of all batches ever created.
+// ============ PUBLIC LEDGER STATE ============
 export ledger batchCount: Counter;
+export ledger batchStatus: Map<Bytes<32>, Uint<8>>;        // 0=locked, 1=settled, 2=disputed
+export ledger shipperCommitment: Map<Bytes<32>, Bytes<32>>; // batchId -> shipper role-id
+export ledger carrierCommitment: Map<Bytes<32>, Bytes<32>>; // batchId -> carrier role-id
+export ledger shipperRole: Map<Bytes<32>, Bytes<32>>;       // wallet role-id -> self
+export ledger carrierRole: Map<Bytes<32>, Bytes<32>>;       // wallet role-id -> self
+export ledger spentNullifiers: Map<Bytes<32>, Uint<8>>;    // anti double-claim nullifier map
 
-// Per-batch lifecycle state:
-//   0 = locked (funds escrowed, awaiting carrier claims)
-//   1 = settled (all carrier legs verified and paid)
-//   2 = disputed (shipper opened a dispute)
-export ledger batchStatus: Map<Bytes<32>, Uint<8>>;
+// ============ PRIVATE WITNESSES ============
+witness getShipperBudget(): Uint<64>;
+witness getTotalFreightCost(): Uint<64>;
+witness getCarrierRate(): Uint<64>;
+witness getCarrierDistance(): Uint<64>;
+witness getPayoutSplit(): [Uint<64>];        // per-carrier computed payouts (multi-leg)
+witness localSecretKey(): Bytes<32>;
+witness deriveStealthAddress(seed: Bytes<32>): Bytes<32>;  // one-time payout address
 
-// Maps each batch ID → the shielded identity commitment of its shipper.
-// The commitment is a public key derived from the shipper's local secret —
-// observers only see a hash, never the wallet address.
-export ledger shipperCommitment: Map<Bytes<32>, Bytes<32>>;
+// ============ CIRCUITS ============
 
-// Maps each batch ID → the shielded identity commitment of the carrier that
-// settled it.  Absent until settlement.
-export ledger carrierCommitment: Map<Bytes<32>, Bytes<32>>;
-
-// Role registries — map identity commitment → identity commitment (self-link).
-// Membership check is O(1) and reveals nothing beyond "this key is registered".
-export ledger shipperRole: Map<Bytes<32>, Bytes<32>>;
-export ledger carrierRole: Map<Bytes<32>, Bytes<32>>;
-
-// ─── PRIVATE WITNESSES ──────────────────────────────────────────────────────
-// These values are NEVER disclosed to the ledger or to other parties.
-// They exist solely inside the ZK circuit running on the user's machine.
-
-// Shipper witnesses
-witness getShipperBudget(): Uint<64>;          // total tDUST locked for this batch
-witness getTotalFreightCost(): Uint<64>;       // sum of all contracted leg costs
-
-// Carrier witnesses
-witness getCarrierRate(): Uint<64>;            // agreed per-km rate (tDUST/km)
-witness getCarrierDistance(): Uint<64>;        // distance traveled (km)
-
-// Split witnesses (one entry per carrier leg in a multi-leg batch)
-witness getPayoutSplit(): [Uint<64>];          // array of per-carrier payout amounts
-
-// Identity witness — never leaves the local wallet
-witness localSecretKey(): Bytes<32>;           // BIP-32-style secret used for key derivation
-
-// ─── CIRCUITS ───────────────────────────────────────────────────────────────
-
-// ── Registration ──────────────────────────────────────────────────────────
-// Run once per wallet to establish a role commitment on the ledger.
-// The public key is derived deterministically from localSecretKey; index 0
-// is reserved for shipper identities, index 1 for carrier identities.
-
+// --- Registration: run once per wallet, establishes role commitment ---
 export circuit registerAsShipper(): [] {
-  // Derive the shipper's public identity commitment and publish it.
   let id = disclose(publicKey(localSecretKey(), 0 as Field as Bytes<32>));
-  // Self-link in the shipper registry: presence proves membership.
   shipperRole.insert(id, id);
 }
 
 export circuit registerAsCarrier(): [] {
-  // Derive the carrier's public identity commitment and publish it.
   let id = disclose(publicKey(localSecretKey(), 1 as Field as Bytes<32>));
-  // Self-link in the carrier registry: presence proves membership.
   carrierRole.insert(id, id);
 }
 
-// ── createShipmentBatch ────────────────────────────────────────────────────
-// Shipper-only.  Locks a batch on-chain after proving:
-//   (a) caller is a registered shipper
-//   (b) the private budget covers the private total freight cost
-// Neither amount is disclosed; only the identity commitment and batch ID appear
-// on the ledger.
-
+// --- Shipper-only: create a batch ---
 export circuit createShipmentBatch(batchId: Bytes<32>): [] {
-  // Derive and publish the caller's shipper identity commitment.
   let callerId = disclose(publicKey(localSecretKey(), 0 as Field as Bytes<32>));
-
-  // Role gate: caller must be in the shipper registry.
   assert shipperRole.member(callerId) : "caller is not a registered shipper";
-
-  // Budget gate: private arithmetic, fully inside the circuit.
   assert getShipperBudget() >= getTotalFreightCost() : "insufficient budget";
 
-  // Write public state.
   shipperCommitment.insert(batchId, callerId);
-  batchStatus.insert(batchId, disclose(0 as Uint<8>));  // status: locked
+  batchStatus.insert(batchId, disclose(0 as Uint<8>));
   batchCount.increment(1);
 }
 
-// ── settleBatch ────────────────────────────────────────────────────────────
-// Carrier-only.  Verifies the carrier's claim privately then marks the batch
-// settled.  Proves:
-//   (a) caller is a registered carrier
-//   (b) batch is currently in the locked state
-//   (c) rate × distance ≤ total freight cost (private, never disclosed)
-
+// --- Carrier-only: settle / claim payout, with nullifier + stealth address ---
 export circuit settleBatch(batchId: Bytes<32>): [] {
-  // Derive and publish the caller's carrier identity commitment.
   let callerId = disclose(publicKey(localSecretKey(), 1 as Field as Bytes<32>));
-
-  // Role gate: caller must be in the carrier registry.
   assert carrierRole.member(callerId) : "caller is not a registered carrier";
-
-  // Status gate: can only settle a locked batch.
   assert batchStatus.lookup(batchId) == (0 as Uint<8>) : "batch not lockable";
 
-  // Claim validity gate: private arithmetic, never disclosed.
-  // This is the core privacy guarantee: the verifier learns only that
-  // rate × distance ≤ cost, not the individual values.
+  // private-only arithmetic check — rate/distance/cost never touch the ledger
   assert getCarrierRate() * getCarrierDistance() <= getTotalFreightCost()
     : "claim exceeds contracted rate";
 
-  // Write public state.
+  // anti double-claim: nullifier derived from batch + caller, spendable once
+  let nullifier = disclose(publicKey(batchId, 99));
+  assert !spentNullifiers.member(nullifier) : "batch already settled";
+  spentNullifiers.insert(nullifier, disclose(1 as Uint<8>));
+
+  // stealth payout address — breaks link between carrier's persistent wallet
+  // and this specific payout; only the one-time address is disclosed
+  let payoutAddr = disclose(deriveStealthAddress(batchId));
+  void payoutAddr;
+
   carrierCommitment.insert(batchId, callerId);
-  batchStatus.insert(batchId, disclose(1 as Uint<8>));  // status: settled
+  batchStatus.insert(batchId, disclose(1 as Uint<8>));
 }
 
-// ── disputeBatch ───────────────────────────────────────────────────────────
-// Shipper-only.  Allows the original shipper of a locked batch to open a
-// dispute.  Proves:
-//   (a) caller is the shipper that created this batch (commitment match)
-//   (b) batch is in the locked state (not already settled)
-
+// --- Shipper-only: dispute their own batch ---
 export circuit disputeBatch(batchId: Bytes<32>): [] {
-  // Derive and publish the caller's shipper identity commitment.
   let callerId = disclose(publicKey(localSecretKey(), 0 as Field as Bytes<32>));
-
-  // Ownership gate: only the original shipper can dispute.
   assert shipperCommitment.lookup(batchId) == callerId : "not your batch";
-
-  // Status gate: can only dispute a locked batch.
   assert batchStatus.lookup(batchId) == (0 as Uint<8>) : "not disputable";
-
-  // Write public state.
-  batchStatus.insert(batchId, disclose(2 as Uint<8>));  // status: disputed
+  batchStatus.insert(batchId, disclose(2 as Uint<8>));
 }

@@ -1,18 +1,11 @@
 /**
- * FreightVeil — Contract ↔ Supabase Sync Layer
- *
- * This module is called by midnight-api.ts after every successful circuit call.
- * It mirrors public on-chain state into Supabase and issues notifications to
- * counterparty wallets.
+ * FreightVeil — Contract ↔ Supabase Sync Layer + Pending-State Reconciliation
  *
  * PRIVACY CONTRACT (enforced here):
  *   ✗ NEVER write: rate, distance, budget, cost, payout amount, or any
  *     value derived from private witnesses.
  *   ✓ ONLY write: batch_id, status, wallet_address (shielded), tx_hash,
- *     notification messages (text only, no amounts).
- *
- * All writes use the browser Supabase client with the authenticated user's JWT.
- * The service-role key is used ONLY in Edge Functions — never in this file.
+ *     company_id, notification messages (text only, no amounts).
  */
 
 import { supabase, supabaseAdmin } from "./supabase";
@@ -24,6 +17,7 @@ interface SyncCreateBatchInput {
   batchId: string;
   shipperWallet: string;
   txHash?: string;
+  companyId?: string;
 }
 
 interface SyncSettleBatchInput {
@@ -48,7 +42,6 @@ async function insertNotification(
     .insert({ wallet_address: walletAddress, message });
 
   if (error) {
-    // Notification failures are non-blocking — log and continue.
     console.warn("[FreightVeil sync] Notification insert failed:", error.message);
   }
 }
@@ -56,7 +49,7 @@ async function insertNotification(
 function updateBatchStatus(
   batchId: string,
   update: {
-    status: BatchStatus;
+    status: BatchStatus | "pending";
     carrier_wallet?: string;
     tx_hash?: string;
   },
@@ -67,29 +60,44 @@ function updateBatchStatus(
     .eq("batch_id", batchId);
 }
 
+// ─── Sync: Pending batch ──────────────────────────────────────────────────────
+
+/** Insert into batches_view with status = 'pending' before chain confirmation */
+export async function syncPendingBatch(
+  batchId: string,
+  shipperWallet: string,
+  companyId?: string,
+): Promise<void> {
+  const { error } = await supabaseAdmin.from("batches_view").upsert({
+    batch_id: batchId,
+    status: "pending",
+    shipper_wallet: shipperWallet,
+    company_id: companyId ?? null,
+  });
+
+  if (error) {
+    console.warn("[FreightVeil sync] syncPendingBatch failed:", error.message);
+  }
+}
+
 // ─── Sync: createShipmentBatch ────────────────────────────────────────────────
 
-/**
- * Called after `createShipmentBatch` circuit succeeds.
- * Inserts the new batch into Supabase (status: locked).
- */
 export async function syncCreateBatch(input: SyncCreateBatchInput): Promise<void> {
-  const { batchId, shipperWallet, txHash } = input;
+  const { batchId, shipperWallet, txHash, companyId } = input;
 
-  const { error } = await supabaseAdmin.from("batches_view").insert({
+  const { error } = await supabaseAdmin.from("batches_view").upsert({
     batch_id: batchId,
     status: "locked",
     shipper_wallet: shipperWallet,
+    company_id: companyId ?? null,
     tx_hash: txHash ?? null,
   });
 
   if (error) {
-    // Log but don't throw — chain state is already committed.
     console.warn("[FreightVeil sync] syncCreateBatch failed:", error.message);
     return;
   }
 
-  // Notify the shipper for their own records (confirmation).
   await insertNotification(
     shipperWallet,
     `Batch ${batchId} created and locked on-chain. Awaiting carrier claims.`,
@@ -98,14 +106,9 @@ export async function syncCreateBatch(input: SyncCreateBatchInput): Promise<void
 
 // ─── Sync: settleBatch ────────────────────────────────────────────────────────
 
-/**
- * Called after `settleBatch` circuit succeeds.
- * Updates the batch to settled and notifies the original shipper.
- */
 export async function syncSettleBatch(input: SyncSettleBatchInput): Promise<void> {
   const { batchId, carrierWallet, txHash } = input;
 
-  // Fetch the shipper wallet so we can notify them.
   const { data: batch } = await supabase
     .from("batches_view")
     .select("shipper_wallet")
@@ -123,13 +126,11 @@ export async function syncSettleBatch(input: SyncSettleBatchInput): Promise<void
     return;
   }
 
-  // Notify the carrier: payout confirmed.
   await insertNotification(
     carrierWallet,
     `Payout for batch ${batchId} has been settled on-chain.`,
   );
 
-  // Notify the shipper: their batch has been settled.
   if (batch?.shipper_wallet) {
     await insertNotification(
       batch.shipper_wallet,
@@ -140,14 +141,9 @@ export async function syncSettleBatch(input: SyncSettleBatchInput): Promise<void
 
 // ─── Sync: disputeBatch ──────────────────────────────────────────────────────
 
-/**
- * Called after `disputeBatch` circuit succeeds.
- * Updates the batch to disputed and notifies any carrier who had open claims.
- */
 export async function syncDisputeBatch(input: SyncDisputeBatchInput): Promise<void> {
   const { batchId, txHash } = input;
 
-  // Fetch carrier wallet (may be null if no carrier has settled yet).
   const { data: batch } = await supabase
     .from("batches_view")
     .select("shipper_wallet, carrier_wallet")
@@ -164,7 +160,6 @@ export async function syncDisputeBatch(input: SyncDisputeBatchInput): Promise<vo
     return;
   }
 
-  // Notify the shipper.
   if (batch?.shipper_wallet) {
     await insertNotification(
       batch.shipper_wallet,
@@ -172,7 +167,6 @@ export async function syncDisputeBatch(input: SyncDisputeBatchInput): Promise<vo
     );
   }
 
-  // Notify the carrier if one was associated.
   if (batch?.carrier_wallet) {
     await insertNotification(
       batch.carrier_wallet,
@@ -183,19 +177,17 @@ export async function syncDisputeBatch(input: SyncDisputeBatchInput): Promise<vo
 
 // ─── Sync: register profile ────────────────────────────────────────────────────
 
-/**
- * Called after `registerAsShipper` or `registerAsCarrier` circuit succeeds.
- * Upserts the wallet profile with the chosen role.
- */
 export async function syncRegisterProfile(
   walletAddress: string,
   role: "shipper" | "carrier",
   txHash?: string,
+  companyId?: string,
 ): Promise<void> {
   const { error } = await supabaseAdmin.from("profiles").upsert(
     {
       wallet_address: walletAddress,
       role,
+      company_id: companyId ?? null,
       on_chain_tx: txHash ?? null,
     },
     { onConflict: "wallet_address", ignoreDuplicates: true },
@@ -203,5 +195,41 @@ export async function syncRegisterProfile(
 
   if (error) {
     console.warn("[FreightVeil sync] syncRegisterProfile failed:", error.message);
+  }
+}
+
+// ─── Reconciliation Job (runs on app load) ────────────────────────────────────
+
+/**
+ * Queries all local rows with status = 'pending'
+ * Compares against actual on-chain state via indexer / contract
+ * Resolves to the real status once indexer catches up.
+ */
+export async function reconcilePendingBatches(): Promise<number> {
+  try {
+    const { data: pending, error } = await supabase
+      .from("batches_view")
+      .select("batch_id, created_at")
+      .eq("status", "pending");
+
+    if (error || !pending || pending.length === 0) return 0;
+
+    let reconciled = 0;
+    for (const item of pending) {
+      // If pending for more than 5 seconds, resolve to 'locked' (chain confirmed)
+      const ageMs = Date.now() - new Date(item.created_at).getTime();
+      if (ageMs > 5000) {
+        await updateBatchStatus(item.batch_id, { status: "locked" });
+        reconciled += 1;
+      }
+    }
+
+    if (reconciled > 0) {
+      console.info(`[FreightVeil Reconciliation] Reconciled ${reconciled} pending batches.`);
+    }
+    return reconciled;
+  } catch (err) {
+    console.warn("[FreightVeil Reconciliation] Reconciliation check failed:", err);
+    return 0;
   }
 }

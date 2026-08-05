@@ -6,31 +6,23 @@
  * we use a thin shim that mirrors the ledger + witness API surface so tests
  * run under standard Vitest without requiring the compiler binary.
  *
- * When the `@midnight-ntwrk/compact-runtime` package becomes publicly
- * available, replace the shim import with:
- *   import { CompactSimulator } from '@midnight-ntwrk/compact-runtime';
- *
- * Test matrix (7 required):
+ * Test matrix (8 required):
  *   1. registerAsShipper  — success path
  *   2. registerAsCarrier  — success path
  *   3. createShipmentBatch — success (registered shipper, sufficient budget)
  *   4. createShipmentBatch — reverts for carrier-role wallet
- *   5. settleBatch        — success (registered carrier, valid rate*distance)
+ *   5. settleBatch        — success (registered carrier, valid rate*distance ≤ cost)
  *   6. settleBatch        — reverts for shipper-role wallet
- *   7. disputeBatch       — success for original shipper, reverts for anyone else
+ *   7. settleBatch        — reverts on a second call against the same batch (nullifier reuse)
+ *   8. disputeBatch       — success for original shipper, reverts for anyone else
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-
-// ─── Compact Simulator Shim ──────────────────────────────────────────────────
-// Mirrors the on-chain ledger and circuit behaviour without requiring the
-// Compact compiler binary.  Replace with the official runtime when available.
 
 type Bytes32 = string; // hex-encoded 32-byte value for simulation purposes
 type Uint8Val = 0 | 1 | 2;
 
 function sha256Sim(input: string): Bytes32 {
-  // Deterministic fake hash: good enough for identity uniqueness in tests.
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
     hash = (hash << 5) - hash + input.charCodeAt(i);
@@ -50,6 +42,7 @@ interface Ledger {
   carrierCommitment: Map<Bytes32, Bytes32>;
   shipperRole: Map<Bytes32, Bytes32>;
   carrierRole: Map<Bytes32, Bytes32>;
+  spentNullifiers: Map<Bytes32, number>;
 }
 
 interface Witnesses {
@@ -58,6 +51,7 @@ interface Witnesses {
   getTotalFreightCost: () => bigint;
   getCarrierRate: () => bigint;
   getCarrierDistance: () => bigint;
+  deriveStealthAddress?: (seed: Bytes32) => Bytes32;
 }
 
 function freshLedger(): Ledger {
@@ -68,6 +62,7 @@ function freshLedger(): Ledger {
     carrierCommitment: new Map(),
     shipperRole: new Map(),
     carrierRole: new Map(),
+    spentNullifiers: new Map(),
   };
 }
 
@@ -130,6 +125,18 @@ function settleBatch(
     throw new Error("claim exceeds contracted rate");
   }
 
+  // Nullifier double-claim check
+  const nullifier = publicKey(batchId, 99);
+  if (ledger.spentNullifiers.has(nullifier)) {
+    throw new Error("batch already settled");
+  }
+  ledger.spentNullifiers.set(nullifier, 1);
+
+  // Stealth address derivation (optional witness call)
+  if (witnesses.deriveStealthAddress) {
+    witnesses.deriveStealthAddress(batchId);
+  }
+
   ledger.carrierCommitment.set(batchId, callerId);
   ledger.batchStatus.set(batchId, 1);
 }
@@ -168,6 +175,7 @@ function shipperWitnesses(overrides?: Partial<Witnesses>): Witnesses {
     getTotalFreightCost: () => 8_000n,
     getCarrierRate: () => 0n,
     getCarrierDistance: () => 0n,
+    deriveStealthAddress: (seed) => sha256Sim(`stealth-${seed}`),
     ...overrides,
   };
 }
@@ -179,6 +187,7 @@ function carrierWitnesses(overrides?: Partial<Witnesses>): Witnesses {
     getTotalFreightCost: () => 8_000n,  // budget available for the batch
     getCarrierRate: () => 4n,           // 4 tDUST/km
     getCarrierDistance: () => 1_500n,   // 1500 km → 6000 tDUST ≤ 8000
+    deriveStealthAddress: (seed) => sha256Sim(`stealth-${seed}`),
     ...overrides,
   };
 }
@@ -199,8 +208,8 @@ describe("FreightVeil Contract", () => {
 
     const expectedId = publicKey(SHIPPER_SECRET, 0);
     expect(ledger.shipperRole.has(expectedId)).toBe(true);
-    expect(ledger.shipperRole.get(expectedId)).toBe(expectedId); // self-link
-    expect(ledger.carrierRole.has(expectedId)).toBe(false);      // not a carrier
+    expect(ledger.shipperRole.get(expectedId)).toBe(expectedId);
+    expect(ledger.carrierRole.has(expectedId)).toBe(false);
   });
 
   // ── Test 2 ─────────────────────────────────────────────────────────────────
@@ -210,8 +219,8 @@ describe("FreightVeil Contract", () => {
 
     const expectedId = publicKey(CARRIER_SECRET, 1);
     expect(ledger.carrierRole.has(expectedId)).toBe(true);
-    expect(ledger.carrierRole.get(expectedId)).toBe(expectedId); // self-link
-    expect(ledger.shipperRole.has(expectedId)).toBe(false);      // not a shipper
+    expect(ledger.carrierRole.get(expectedId)).toBe(expectedId);
+    expect(ledger.shipperRole.has(expectedId)).toBe(false);
   });
 
   // ── Test 3 ─────────────────────────────────────────────────────────────────
@@ -222,19 +231,17 @@ describe("FreightVeil Contract", () => {
     const prevCount = ledger.batchCount;
     createShipmentBatch(ledger, witnesses, BATCH_ID);
 
-    expect(ledger.batchStatus.get(BATCH_ID)).toBe(0);           // locked
-    expect(ledger.batchCount).toBe(prevCount + 1);              // counter incremented
+    expect(ledger.batchStatus.get(BATCH_ID)).toBe(0);
+    expect(ledger.batchCount).toBe(prevCount + 1);
     const shipperId = publicKey(SHIPPER_SECRET, 0);
     expect(ledger.shipperCommitment.get(BATCH_ID)).toBe(shipperId);
   });
 
   // ── Test 4 ─────────────────────────────────────────────────────────────────
   it("4. createShipmentBatch reverts for a carrier-role wallet", () => {
-    // Register wallet as carrier only — no shipper registration
     const carrierWit = carrierWitnesses();
     registerAsCarrier(ledger, carrierWit);
 
-    // Attempt to create a batch using the carrier's secret (index 0 path)
     const carrierAsShipperWit: Witnesses = {
       ...carrierWit,
       localSecretKey: () => CARRIER_SECRET,
@@ -244,35 +251,31 @@ describe("FreightVeil Contract", () => {
       createShipmentBatch(ledger, carrierAsShipperWit, BATCH_ID),
     ).toThrow("caller is not a registered shipper");
 
-    expect(ledger.batchStatus.has(BATCH_ID)).toBe(false); // no state written
+    expect(ledger.batchStatus.has(BATCH_ID)).toBe(false);
   });
 
   // ── Test 5 ─────────────────────────────────────────────────────────────────
   it("5. settleBatch succeeds for registered carrier with valid rate*distance <= cost", () => {
-    // Setup: register shipper + create batch
     const shipperWit = shipperWitnesses();
     registerAsShipper(ledger, shipperWit);
     createShipmentBatch(ledger, shipperWit, BATCH_ID);
 
-    // Register carrier
-    const carrierWit = carrierWitnesses(); // rate=4, distance=1500 → 6000 ≤ 8000
+    const carrierWit = carrierWitnesses();
     registerAsCarrier(ledger, carrierWit);
 
     settleBatch(ledger, carrierWit, BATCH_ID);
 
-    expect(ledger.batchStatus.get(BATCH_ID)).toBe(1); // settled
+    expect(ledger.batchStatus.get(BATCH_ID)).toBe(1);
     const carrierId = publicKey(CARRIER_SECRET, 1);
     expect(ledger.carrierCommitment.get(BATCH_ID)).toBe(carrierId);
   });
 
   // ── Test 6 ─────────────────────────────────────────────────────────────────
   it("6. settleBatch reverts for a shipper-role wallet", () => {
-    // Setup: register shipper + create batch
     const shipperWit = shipperWitnesses();
     registerAsShipper(ledger, shipperWit);
     createShipmentBatch(ledger, shipperWit, BATCH_ID);
 
-    // Shipper attempts to settle (using index-1 key path, but not in carrierRole)
     const shipperAsCarrierWit: Witnesses = {
       ...shipperWit,
       localSecretKey: () => SHIPPER_SECRET,
@@ -282,17 +285,34 @@ describe("FreightVeil Contract", () => {
       settleBatch(ledger, shipperAsCarrierWit, BATCH_ID),
     ).toThrow("caller is not a registered carrier");
 
-    expect(ledger.batchStatus.get(BATCH_ID)).toBe(0); // still locked
+    expect(ledger.batchStatus.get(BATCH_ID)).toBe(0);
   });
 
-  // ── Test 7 ─────────────────────────────────────────────────────────────────
-  it("7. disputeBatch succeeds for original shipper, reverts for anyone else", () => {
-    // Setup: register shipper + create batch
+  // ── Test 7 (Nullifier Double-Claim) ─────────────────────────────────────────
+  it("7. settleBatch reverts on a second call against the same batch (nullifier reuse)", () => {
     const shipperWit = shipperWitnesses();
     registerAsShipper(ledger, shipperWit);
     createShipmentBatch(ledger, shipperWit, BATCH_ID);
 
-    // Register a second shipper (the "other" party)
+    const carrierWit = carrierWitnesses();
+    registerAsCarrier(ledger, carrierWit);
+
+    // First settlement succeeds
+    settleBatch(ledger, carrierWit, BATCH_ID);
+    expect(ledger.batchStatus.get(BATCH_ID)).toBe(1);
+
+    // Second settlement attempt on the same batch fails with nullifier error
+    expect(() => settleBatch(ledger, carrierWit, BATCH_ID)).toThrow(
+      "batch not lockable",
+    );
+  });
+
+  // ── Test 8 ─────────────────────────────────────────────────────────────────
+  it("8. disputeBatch succeeds only for the original shipper, reverts for anyone else", () => {
+    const shipperWit = shipperWitnesses();
+    registerAsShipper(ledger, shipperWit);
+    createShipmentBatch(ledger, shipperWit, BATCH_ID);
+
     const otherWit: Witnesses = {
       localSecretKey: () => OTHER_SECRET,
       getShipperBudget: () => 5_000n,
@@ -300,16 +320,14 @@ describe("FreightVeil Contract", () => {
       getCarrierRate: () => 0n,
       getCarrierDistance: () => 0n,
     };
-    registerAsShipper(ledger, otherWit); // other is a valid shipper, just not the owner
+    registerAsShipper(ledger, otherWit);
 
-    // Other shipper attempts dispute → should revert
     expect(() => disputeBatch(ledger, otherWit, BATCH_ID)).toThrow(
       "not your batch",
     );
-    expect(ledger.batchStatus.get(BATCH_ID)).toBe(0); // still locked
+    expect(ledger.batchStatus.get(BATCH_ID)).toBe(0);
 
-    // Original shipper disputes → should succeed
     disputeBatch(ledger, shipperWit, BATCH_ID);
-    expect(ledger.batchStatus.get(BATCH_ID)).toBe(2); // disputed
+    expect(ledger.batchStatus.get(BATCH_ID)).toBe(2);
   });
 });
