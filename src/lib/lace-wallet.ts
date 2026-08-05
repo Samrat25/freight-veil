@@ -105,13 +105,12 @@ export function isLaceInstalled(): boolean {
   return (
     typeof window !== "undefined" &&
     typeof window.midnight !== "undefined" &&
-    WALLET_ID in (window.midnight ?? {})
+    Object.keys(window.midnight ?? {}).length > 0
   );
 }
 
 /**
  * Returns all detected Midnight wallet IDs injected into the page.
- * Allows showing a wallet picker if multiple wallets are installed.
  */
 export function getDetectedWallets(): string[] {
   if (typeof window === "undefined" || !window.midnight) return [];
@@ -122,27 +121,27 @@ export function getDetectedWallets(): string[] {
 
 /**
  * Connect to the Lace Midnight wallet extension.
- *
- * Triggers the Lace authorization dialog. The user must approve the
- * connection in their wallet UI. Returns a LiveWalletSession on success.
- *
- * @param walletId - defaults to 'mnLace' (Lace wallet)
- * @throws if no Midnight wallet is detected or user rejects the connection
+ * Triggers the Lace authorization dialog popup window.
  */
 export async function connectLaceWallet(
-  walletId: string = WALLET_ID,
+  walletId?: string,
 ): Promise<LiveWalletSession> {
-  if (!window.midnight?.[walletId]) {
+  if (typeof window === "undefined" || !window.midnight) {
     throw new Error(
-      `Midnight wallet '${walletId}' not found.\n` +
-        `Please install the Lace wallet browser extension from:\n` +
-        `https://www.lace.io/`,
+      "No Midnight wallet extension found.\nPlease install Lace wallet from https://www.lace.io/",
     );
   }
 
-  const initialApi = window.midnight[walletId];
+  const keys = Object.keys(window.midnight);
+  if (keys.length === 0) {
+    throw new Error("Midnight wallet object is empty. Please check extension activation.");
+  }
 
-  // Trigger the wallet's authorization dialog
+  const targetKey = (walletId && window.midnight[walletId]) ? walletId : (keys.includes(WALLET_ID) ? WALLET_ID : keys[0]);
+  const initialApi = window.midnight[targetKey];
+
+  // Trigger the wallet's popup authorization dialog window
+  console.info(`[Lace Wallet] Triggering extension connection popup for '${targetKey}'...`);
   const connectedApi = await initialApi.connect(NETWORK_ID);
 
   // Fetch shielded addresses — safe to display, not private keys
@@ -152,13 +151,10 @@ export async function connectLaceWallet(
     throw new Error("Wallet returned no shielded address. Please check your wallet setup.");
   }
 
-  // Fetch user-configured service endpoints (node, proof-server, indexer)
-  // DApps should honour user's wallet settings for privacy reasons
   let config: MidnightServiceConfig;
   try {
     config = await connectedApi.getConfiguration();
   } catch {
-    // Wallet may not support getConfiguration in older versions — use env-driven defaults
     config = {
       indexerUri: FALLBACK_INDEXER_URL,
       indexerWsUri: FALLBACK_INDEXER_WS,

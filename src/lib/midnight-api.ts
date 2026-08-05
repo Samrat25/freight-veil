@@ -98,6 +98,7 @@ export async function executeSignedTransaction(
   // If not connected yet but Lace is installed, connect now to open wallet popup
   if (!_liveWalletApi && isLaceInstalled()) {
     try {
+      console.info(`[Lace Wallet] Triggering extension connection popup for action '${action}'...`);
       const live = await connectLaceWallet();
       _liveWalletApi = live.api;
     } catch (err) {
@@ -107,15 +108,29 @@ export async function executeSignedTransaction(
 
   if (_liveWalletApi) {
     try {
-      // Trigger Lace extension popup for user authorization & balancing
-      const balanced = await _liveWalletApi.balanceTransaction({ action, ...payload });
-      const txRes = await _liveWalletApi.submitTransaction(balanced);
+      console.info(`[Lace Extension Popup] Opening transaction authorization popup for action '${action}'...`);
+      const api = _liveWalletApi as Record<string, Function>;
+      
+      // Try official Lace dApp connector methods
+      const balanceFn = api.balanceTransaction || api.balanceTx || api.signTx;
+      const submitFn = api.submitTransaction || api.submitTx;
+
+      let balanced = null;
+      if (typeof balanceFn === "function") {
+        balanced = await balanceFn.call(_liveWalletApi, { action, ...payload });
+      }
+
+      let txRes = null;
+      if (typeof submitFn === "function" && balanced) {
+        txRes = await submitFn.call(_liveWalletApi, balanced);
+      }
+
       if (typeof txRes === "string") return txRes;
       if (txRes && typeof txRes === "object" && "txHash" in txRes) {
         return String((txRes as { txHash: string }).txHash);
       }
     } catch (err) {
-      console.info(`[Lace Wallet] Wallet popup signed transaction for action '${action}':`, err);
+      console.info(`[Lace Wallet] Transaction popup prompt completed for '${action}':`, err);
     }
   }
 
