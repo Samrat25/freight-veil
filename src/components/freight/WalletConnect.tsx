@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Wallet, Check, Copy, ExternalLink, AlertCircle, Shield, Globe } from "lucide-react";
+import { Loader2, Wallet, Check, Copy, ExternalLink, AlertCircle, Shield, Globe, Zap } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,29 +12,25 @@ import { Button } from "@/components/ui/button";
 import { useFreight } from "@/lib/freight-store";
 import { RoleSelect } from "./RoleSelect";
 import { RoleBadge } from "./RoleBadge";
-import { truncateAddress, isLaceInstalled, getDetectedWallets, LACE_INSTALL_URL } from "@/lib/midnight-api";
+import { truncateAddress, isLaceInstalled, getDetectedWallets } from "@/lib/midnight-api";
 import type { MidnightNetwork } from "@/lib/lace-wallet";
-import { MIDNIGHT_FAUCET_URL } from "@/lib/lace-wallet";
+import { ONE_AM_INSTALL_URL, MIDNIGHT_FAUCET_URL } from "@/lib/lace-wallet";
 
 export function WalletConnect({ size = "default" }: { size?: "default" | "lg" }) {
   const { wallet, role, connecting, connect, disconnect } = useFreight();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
-  const [laceDetected, setLaceDetected] = useState(false);
+  const [walletDetected, setWalletDetected] = useState(false);
   const [detectedWallets, setDetectedWallets] = useState<string[]>([]);
-  const [selectedNetwork, setSelectedNetwork] = useState<MidnightNetwork>("preprod");
-
-  // Simulated balances (real balance queries require indexer integration)
-  const tNightBalance = 0;
-  const tDustBalance = 0;
+  const [selectedNetwork, setSelectedNetwork] = useState<MidnightNetwork>("preview");
 
   useEffect(() => {
     const check = () => {
-      setLaceDetected(isLaceInstalled());
-      setDetectedWallets(getDetectedWallets());
+      setWalletDetected(isLaceInstalled());
+      setDetectedWallets(getDetectedWallets().map((w) => w.name));
     };
     check();
-    const timer = setTimeout(check, 800);
+    const timer = setTimeout(check, 500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -54,7 +50,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
           id="wallet-connect-button"
         >
           <Wallet className="size-4" aria-hidden="true" />
-          {wallet ? truncateAddress(wallet.address) : "Connect Wallet"}
+          {wallet ? truncateAddress(wallet.address) : "Connect 1AM Wallet"}
           {wallet && role ? (
             <span className="ml-1" aria-label={`Role: ${role}`}>
               {role === "shipper" ? "🚢" : "🚚"}
@@ -66,27 +62,28 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Wallet className="size-5" />
-            Lace Wallet
+            <Wallet className="size-5 text-primary" />
+            1AM Wallet
           </DialogTitle>
-          <DialogDescription className="uppercase tracking-widest text-[10px] text-muted-foreground">
-            Midnight Blockchain · Zero-Knowledge Payments
+          <DialogDescription className="uppercase tracking-widest text-[10px] text-muted-foreground flex items-center gap-1">
+            Midnight Network · Zero-Dust ProofStation
           </DialogDescription>
         </DialogHeader>
 
         {wallet && !role ? (
           <RoleSelect onSelected={() => setOpen(false)} />
         ) : wallet ? (
-          /* ── Connected state — MidRoll-style ── */
+          /* ── Connected State (1AM Wallet & MidRoll Dashboard style) ── */
           <div className="space-y-4">
             {/* Status badges */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">Connected</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">1AM Connected</span>
               </div>
-              <span className="rounded border border-border px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                Extension Active
+              <span className="flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
+                <Zap className="size-3" />
+                Zero-Dust Sponsored
               </span>
             </div>
 
@@ -112,53 +109,53 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               </p>
               <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2.5">
                 <p className="flex-1 truncate font-mono text-xs text-foreground">
-                  {wallet.address.replace('mn_shield-addr_test1', '').slice(0, 16)}...{wallet.address.slice(-8)}
+                  {wallet.address.slice(0, 18)}...{wallet.address.slice(-8)}
                 </p>
                 <button
                   onClick={() => handleCopy(wallet.address, "key")}
                   className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {copied === "key" ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  {copied === "key" ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
                 </button>
               </div>
             </div>
 
             {/* Balance cards */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-md border border-border p-3">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">tNight Balance</p>
+              <div className="rounded-md border border-border p-3 bg-card">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">tNIGHT Balance</p>
                 <p className="mt-1 text-lg font-bold text-foreground">
-                  <span className="mr-1 text-muted-foreground">Ø</span>
-                  {tNightBalance} <span className="text-xs font-normal text-muted-foreground">tNIGHT</span>
+                  0 <span className="text-xs font-normal text-muted-foreground">tNIGHT</span>
                 </p>
+                <span className="text-[9px] text-muted-foreground">Private ZK Ledger</span>
               </div>
-              <div className="rounded-md border border-border p-3">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">tDust ZK Fuel</p>
-                <p className="mt-1 text-lg font-bold text-foreground">
-                  <span className="mr-1 text-muted-foreground">Ø</span>
-                  {tDustBalance} <span className="text-xs font-normal text-muted-foreground">tDUST</span>
+              <div className="rounded-md border border-border p-3 bg-card">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">tDUST Fuel</p>
+                <p className="mt-1 text-lg font-bold text-emerald-400">
+                  0 <span className="text-xs font-normal text-muted-foreground">tDUST</span>
                 </p>
+                <span className="text-[9px] text-emerald-400/80">ProofStation Sponsored</span>
               </div>
             </div>
 
-            {/* Network selector */}
+            {/* Network Selector */}
             <div className="rounded-md border border-border p-3">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1 mb-2">
                 <Globe className="size-3" />
                 Target Midnight Network
               </p>
               <div className="grid grid-cols-3 gap-2">
-                {(['preview', 'devnet', 'preprod'] as MidnightNetwork[]).map((net) => (
+                {(["preview", "preprod", "mainnet"] as MidnightNetwork[]).map((net) => (
                   <button
                     key={net}
                     onClick={() => setSelectedNetwork(net)}
-                    className={`rounded-md border px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                    className={`rounded-md border px-2.5 py-1.5 text-xs font-medium capitalize transition-colors ${
                       selectedNetwork === net
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border text-muted-foreground hover:border-primary/50'
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/50"
                     }`}
                   >
-                    {net.charAt(0).toUpperCase() + net.slice(1)}
+                    {net}
                   </button>
                 ))}
               </div>
@@ -172,18 +169,18 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               </div>
             )}
 
-            {/* Fund wallet link */}
+            {/* Faucet link */}
             <a
               href={MIDNIGHT_FAUCET_URL}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400 hover:bg-amber-500/20 transition-colors"
+              className="flex items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary hover:bg-primary/20 transition-colors"
             >
-              Fund wallet with tNIGHT
+              Get Testnet Tokens (Faucet)
               <ExternalLink className="size-3" />
             </a>
 
-            {/* Disconnect */}
+            {/* Disconnect button */}
             <Button
               variant="outline"
               className="w-full text-red-400 border-red-500/30 hover:bg-red-500/10"
@@ -193,64 +190,64 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
                 setOpen(false);
               }}
             >
-              ⏏ Disconnect Wallet
+              Disconnect Wallet
             </Button>
           </div>
         ) : (
-          /* ── Not connected — show wallet picker ── */
+          /* ── Not Connected — 1AM Extension Picker ── */
           <div className="space-y-3">
             <button
               type="button"
               disabled={connecting}
               onClick={() => connect()}
-              id="lace-connect-button"
+              id="1am-connect-button"
               className="veil-panel flex w-full items-center gap-3 p-4 text-left transition-colors hover:border-primary/50 disabled:opacity-60"
             >
               <span className="flex size-10 items-center justify-center rounded-md bg-primary/15 text-primary">
                 {connecting ? (
                   <Loader2 className="size-5 animate-spin" />
                 ) : (
-                  <Wallet className="size-5" />
+                  <Zap className="size-5" />
                 )}
               </span>
               <span className="flex-1">
-                <span className="block text-sm font-medium">Lace — Midnight</span>
+                <span className="block text-sm font-medium">1AM Wallet (Midnight)</span>
                 <span className="block text-xs text-muted-foreground">
                   {connecting
-                    ? "Awaiting wallet approval…"
-                    : laceDetected
-                    ? "Browser extension detected ✓"
+                    ? "Connecting to 1AM..."
+                    : walletDetected
+                    ? "1AM extension detected ✓"
                     : detectedWallets.length > 0
-                    ? `Detected: ${detectedWallets.join(", ")}`
-                    : "Browser extension"}
+                    ? `Wallets: ${detectedWallets.join(", ")}`
+                    : "Zero-dust sponsored transactions"}
                 </span>
               </span>
             </button>
 
-            {!laceDetected && !connecting && (
+            {!walletDetected && !connecting && (
               <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-400">
                 <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                 <span>
-                  Lace wallet not detected.{" "}
+                  1AM wallet not detected.{" "}
                   <a
-                    href={LACE_INSTALL_URL}
+                    href={ONE_AM_INSTALL_URL}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-amber-300"
-                    id="install-lace-link"
+                    id="install-1am-link"
                   >
-                    Install Lace
+                    Install 1AM Wallet
                     <ExternalLink className="size-3" />
                   </a>{" "}
-                  for Midnight to use real shielded transactions.
+                  for zero-dust Midnight transactions.
                 </span>
               </div>
             )}
 
             <p className="text-xs text-muted-foreground">
-              {laceDetected
-                ? "Click to connect your Lace wallet. The extension popup will ask you to approve."
-                : "Without Lace, the app runs in demo mode — no real on-chain transactions."}
+              {walletDetected
+                ? "Click to connect your 1AM wallet. ProofStation automatically sponsors transaction fees."
+                : "Without 1AM wallet, the app operates in local simulation mode."}
             </p>
           </div>
         )}

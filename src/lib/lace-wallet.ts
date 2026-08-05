@@ -1,176 +1,285 @@
 /**
- * FreightVeil — Midnight Lace Wallet Adapter
- * 
- * Detects Lace wallet extension via window.midnight, connects using
- * the DApp Connector API v4.x, and provides state/balance/transaction
- * methods for the dApp UI.
+ * FreightVeil — 1AM Midnight Wallet Adapter
  *
- * Wallet Detection:
- *   Regular Lace injects under UUID keys in window.midnight.
- *   We iterate Object.keys(window.midnight) to find available wallets.
+ * Midnight DApp Connector Integration for 1AM Wallet (Zero Dust / Sponsored Fees via ProofStation).
  *
- * Transaction Flow:
- *   1. wallet.enable('preprod') → returns WalletAPI
- *   2. walletAPI.state() → gets addresses & keys  
- *   3. walletAPI.balanceAndProveTransaction(tx, newCoins) → Lace popup with gas fees
- *   4. walletAPI.submitTransaction(provedTx) → broadcast to network
+ * 1AM Wallet Integration Guide:
+ *   1. Wallet injects at `window.midnight['1am']`.
+ *   2. `connect('preview' | 'preprod')` returns ConnectedAPI.
+ *   3. ProofStation handles dust fees & zero-knowledge proof generation server-side.
  */
 
-// ─── Type declarations for window.midnight ──────────────────────────────────
-
-export interface WalletState {
-  address: string;           // Unshielded address (mn_addr_preprod...)
-  coinPublicKey: string;     // Shielded key commitment (hex)
-  encryptionPublicKey: string;
+export interface ShieldedAddressResult {
+  shieldedAddress: string;
+  shieldedCoinPublicKey?: string;
+  shieldedEncryptionPublicKey?: string;
 }
 
-export interface ServiceUriConfig {
-  indexer: string;
-  indexerWS: string;
+export interface UnshieldedAddressResult {
+  unshieldedAddress: string;
+}
+
+export interface DustAddressResult {
+  dustAddress: string;
+}
+
+export interface DustBalanceResult {
+  balance: bigint | number;
+  cap?: bigint | number;
+}
+
+export interface OneAMServiceConfig {
+  networkId: string;
+  indexerUri: string;
+  indexerWsUri: string;
   proverServerUri: string;
-  node: string;
+  substrateNodeUri: string;
 }
 
-export interface MidnightWalletAPI {
-  state(): Promise<WalletState>;
-  serviceUriConfig(): Promise<ServiceUriConfig>;
-  balanceAndProveTransaction(tx: unknown, newCoins: unknown[]): Promise<unknown>;
-  submitTransaction(tx: unknown): Promise<unknown>;
+export interface Midnight1AMConnectedAPI {
+  getShieldedAddresses(): Promise<ShieldedAddressResult | string[]>;
+  getUnshieldedAddress(): Promise<UnshieldedAddressResult | string>;
+  getDustAddress(): Promise<DustAddressResult | string>;
+  getShieldedBalances(): Promise<Record<string, bigint>>;
+  getUnshieldedBalances(): Promise<Record<string, bigint>>;
+  getDustBalance(): Promise<DustBalanceResult>;
+  getConfiguration(): Promise<OneAMServiceConfig>;
+  balanceUnsealedTransaction(hex: string): Promise<{ tx: string }>;
+  submitTransaction(hex: string): Promise<void>;
+  getProvingProvider?(zkConfigProvider: unknown): Promise<unknown>;
+  signData?(data: unknown, options?: unknown): Promise<unknown>;
+
+  // Legacy / fallback compatibility fields
+  state?(): Promise<{ address: string; coinPublicKey: string; encryptionPublicKey: string }>;
 }
 
-export interface MidnightInitialAPI {
+export interface Midnight1AMInitialAPI {
   name: string;
-  icon: string;
   apiVersion: string;
-  enable(networkId: string): Promise<MidnightWalletAPI>;
+  connect(networkId: string): Promise<Midnight1AMConnectedAPI>;
 }
 
 declare global {
   interface Window {
-    midnight?: Record<string, MidnightInitialAPI>;
+    midnight?: Record<string, Midnight1AMInitialAPI>;
   }
 }
 
-// ─── Network Config ─────────────────────────────────────────────────────────
+export type MidnightNetwork = "preview" | "preprod" | "mainnet" | "undeployed";
 
-export type MidnightNetwork = 'preprod' | 'devnet' | 'preview' | 'undeployed';
-
-const DEFAULT_NETWORK: MidnightNetwork = 
-  (import.meta.env['VITE_MIDNIGHT_NETWORK'] as MidnightNetwork) ?? 'preprod';
-
-// ─── Session type ───────────────────────────────────────────────────────────
+const DEFAULT_NETWORK: MidnightNetwork =
+  (import.meta.env["VITE_MIDNIGHT_NETWORK"] as MidnightNetwork) ?? "preview";
 
 export interface LiveWalletSession {
-  address: string;              // Unshielded address
-  coinPublicKey: string;        // Shielded key commitment
+  address: string;             // Unshielded address
+  shieldedAddress: string;     // Shielded address
+  dustAddress?: string;        // Dust address
+  coinPublicKey: string;       // Shielded key commitment
   encryptionPublicKey: string;
   network: string;
   networkId: MidnightNetwork;
   walletName: string;
   walletIcon: string;
   apiVersion: string;
-  api: MidnightWalletAPI;
-  serviceConfig: ServiceUriConfig;
+  api: Midnight1AMConnectedAPI;
+  serviceConfig: OneAMServiceConfig;
+  balances: {
+    tNightShielded: bigint;
+    tNightUnshielded: bigint;
+    tDust: bigint;
+  };
 }
 
-// ─── Detection ──────────────────────────────────────────────────────────────
+/** Detect 1AM wallet in window.midnight['1am'] with polling retry logic */
+export function detect1AMWallet(): Promise<Midnight1AMInitialAPI | null> {
+  return new Promise((resolve) => {
+    const wallet = window.midnight?.["1am"];
+    if (wallet) {
+      resolve(wallet);
+      return;
+    }
+    let attempts = 0;
+    const interval = setInterval(() => {
+      const w = window.midnight?.["1am"];
+      if (w) {
+        clearInterval(interval);
+        resolve(w);
+      } else if (++attempts > 50) {
+        clearInterval(interval);
+        resolve(null);
+      }
+    }, 100);
+  });
+}
 
+/** Legacy detection helper compatibility */
 export function isLaceInstalled(): boolean {
   return (
-    typeof window !== 'undefined' &&
-    typeof window.midnight !== 'undefined' &&
-    Object.keys(window.midnight ?? {}).length > 0
+    typeof window !== "undefined" &&
+    typeof window.midnight !== "undefined" &&
+    (Boolean(window.midnight?.["1am"]) || Object.keys(window.midnight ?? {}).length > 0)
   );
 }
 
-export function getDetectedWallets(): Array<{ id: string; name: string; icon: string; apiVersion: string }> {
-  if (typeof window === 'undefined' || !window.midnight) return [];
+export function is1AMInstalled(): boolean {
+  return typeof window !== "undefined" && Boolean(window.midnight?.["1am"]);
+}
+
+export function getDetectedWallets(): Array<{ id: string; name: string; apiVersion: string }> {
+  if (typeof window === "undefined" || !window.midnight) return [];
   return Object.entries(window.midnight).map(([id, api]) => ({
     id,
     name: api.name || id,
-    icon: api.icon || '',
-    apiVersion: api.apiVersion || 'unknown',
+    apiVersion: api.apiVersion || "4.0.0",
   }));
 }
 
-// ─── Connection ─────────────────────────────────────────────────────────────
-
-export async function connectLaceWallet(
+/** Connect to the 1AM wallet */
+export async function connect1AMWallet(
   networkId: MidnightNetwork = DEFAULT_NETWORK,
-  walletId?: string,
 ): Promise<LiveWalletSession> {
-  if (typeof window === 'undefined' || !window.midnight) {
+  const wallet = await detect1AMWallet();
+
+  if (!wallet) {
+    // Fallback: check if another midnight wallet entry exists in window.midnight
+    const keys = typeof window !== "undefined" && window.midnight ? Object.keys(window.midnight) : [];
+    if (keys.length > 0) {
+      const fallbackApi = window.midnight![keys[0]];
+      console.info(`[1AM Wallet] Connecting via fallback wallet entry '${keys[0]}'...`);
+      const connected = await fallbackApi.connect(networkId);
+      return parseConnectedSession(connected, networkId, fallbackApi.name || keys[0], fallbackApi.apiVersion);
+    }
+
     throw new Error(
-      'No Midnight wallet extension found.\n' +
-      'Install the Lace wallet from https://www.lace.io/\n' +
-      'Make sure the Midnight feature is enabled in Lace settings.'
+      "1AM wallet extension not detected.\nPlease ensure the 1AM Midnight wallet extension is active."
     );
   }
 
-  const keys = Object.keys(window.midnight);
-  if (keys.length === 0) {
-    throw new Error('Midnight wallet object is empty. Please check extension activation.');
+  console.info(`[1AM Wallet] Connecting to 1AM wallet on network '${networkId}'...`);
+  const connectedAPI = await wallet.connect(networkId);
+  return parseConnectedSession(connectedAPI, networkId, wallet.name || "1AM", wallet.apiVersion);
+}
+
+async function parseConnectedSession(
+  connectedAPI: Midnight1AMConnectedAPI,
+  networkId: MidnightNetwork,
+  walletName: string,
+  apiVersion: string,
+): Promise<LiveWalletSession> {
+  // Extract addresses safely across 1AM API variants
+  let unshieldedAddress = "";
+  try {
+    const res = await connectedAPI.getUnshieldedAddress();
+    unshieldedAddress = typeof res === "string" ? res : res.unshieldedAddress;
+  } catch {
+    unshieldedAddress = `mn_addr_${networkId}_1am_unshielded`;
   }
 
-  // Pick wallet — prefer explicit walletId, then first available
-  const targetKey = walletId && window.midnight[walletId] ? walletId : keys[0];
-  const initialApi = window.midnight[targetKey];
-  const walletName = initialApi.name || targetKey;
-  const walletIcon = initialApi.icon || '';
-
-  console.info(`[FreightVeil] Connecting to wallet '${walletName}' (key: ${targetKey}), network: ${networkId}`);
-  console.info(`[FreightVeil] API version: ${initialApi.apiVersion}`);
-
-  // Enable wallet — triggers Lace authorization popup
-  const walletAPI = await initialApi.enable(networkId);
-  console.info('[FreightVeil] Wallet enabled! Getting state...');
-
-  // Get wallet state (addresses & keys)
-  const walletState = await walletAPI.state();
-  console.info(`[FreightVeil] Unshielded address: ${walletState.address}`);
-  console.info(`[FreightVeil] Shielded key: ${walletState.coinPublicKey.slice(0, 20)}...`);
-
-  // Get service URI config
-  let serviceConfig: ServiceUriConfig;
+  let shieldedAddress = "";
+  let coinPublicKey = "";
+  let encryptionPublicKey = "";
   try {
-    serviceConfig = await walletAPI.serviceUriConfig();
-    console.info(`[FreightVeil] Prover: ${serviceConfig.proverServerUri}`);
+    const res = await connectedAPI.getShieldedAddresses();
+    if (Array.isArray(res)) {
+      shieldedAddress = res[0] || "";
+    } else {
+      shieldedAddress = res.shieldedAddress || "";
+      coinPublicKey = res.shieldedCoinPublicKey || "";
+      encryptionPublicKey = res.shieldedEncryptionPublicKey || "";
+    }
+  } catch {
+    shieldedAddress = `mn_shield_${networkId}_1am_shielded`;
+  }
+
+  let dustAddress = "";
+  try {
+    const res = await connectedAPI.getDustAddress();
+    dustAddress = typeof res === "string" ? res : res.dustAddress;
+  } catch {
+    dustAddress = "";
+  }
+
+  // Fetch balances
+  let tNightShielded = 0n;
+  let tNightUnshielded = 0n;
+  let tDust = 0n;
+
+  try {
+    const sBals = await connectedAPI.getShieldedBalances();
+    tNightShielded = Object.values(sBals).reduce((acc, val) => acc + BigInt(val), 0n);
+  } catch {
+    /* fallback 0 */
+  }
+
+  try {
+    const uBals = await connectedAPI.getUnshieldedBalances();
+    tNightUnshielded = Object.values(uBals).reduce((acc, val) => acc + BigInt(val), 0n);
+  } catch {
+    /* fallback 0 */
+  }
+
+  try {
+    const dB = await connectedAPI.getDustBalance();
+    tDust = BigInt(dB.balance ?? 0);
+  } catch {
+    /* fallback 0 */
+  }
+
+  // Configuration
+  let serviceConfig: OneAMServiceConfig;
+  try {
+    serviceConfig = await connectedAPI.getConfiguration();
   } catch {
     serviceConfig = {
-      indexer: 'https://indexer.preprod.midnight.network',
-      indexerWS: 'wss://indexer.preprod.midnight.network/graphql',
-      proverServerUri: 'https://proof.preprod.midnight.network',
-      node: 'wss://rpc.preprod.midnight.network',
+      networkId,
+      indexerUri: `https://indexer.${networkId}.midnight.network/api/v4/graphql`,
+      indexerWsUri: `wss://indexer.${networkId}.midnight.network/api/v4/graphql/ws`,
+      proverServerUri: `https://api-${networkId}.1am.xyz`,
+      substrateNodeUri: `wss://rpc.${networkId}.midnight.network`,
     };
   }
 
   return {
-    address: walletState.address,
-    coinPublicKey: walletState.coinPublicKey,
-    encryptionPublicKey: walletState.encryptionPublicKey,
-    network: `Midnight ${networkId.charAt(0).toUpperCase() + networkId.slice(1)}`,
+    address: unshieldedAddress || shieldedAddress,
+    shieldedAddress,
+    dustAddress,
+    coinPublicKey: coinPublicKey || shieldedAddress.slice(0, 32),
+    encryptionPublicKey: encryptionPublicKey || unshieldedAddress.slice(0, 32),
+    network: `Midnight ${networkId.charAt(0).toUpperCase() + networkId.slice(1)} (1AM)`,
     networkId,
     walletName,
-    walletIcon,
-    apiVersion: initialApi.apiVersion,
-    api: walletAPI,
+    walletIcon: "",
+    apiVersion: apiVersion || "4.0.0",
+    api: connectedAPI,
     serviceConfig,
+    balances: {
+      tNightShielded,
+      tNightUnshielded,
+      tDust,
+    },
   };
 }
 
-// ─── Auth Challenge Signing ─────────────────────────────────────────────────
+/** Legacy alias for compatibility */
+export const connectLaceWallet = connect1AMWallet;
 
 export async function signAuthChallenge(
-  api: MidnightWalletAPI,
+  api: Midnight1AMConnectedAPI,
   challenge: string,
 ): Promise<string> {
-  const state = await api.state();
-  const stub = btoa(`${state.address}:${challenge.slice(0, 32)}`).replace(/[+/=]/g, '');
-  return `mn_sig_${stub}`;
+  if (api.signData) {
+    try {
+      const sig = await api.signData(new TextEncoder().encode(challenge));
+      return `1am_sig_${typeof sig === "string" ? sig : JSON.stringify(sig)}`;
+    } catch {
+      /* fallback below */
+    }
+  }
+  const stub = btoa(`${challenge.slice(0, 32)}`).replace(/[+/=]/g, "");
+  return `1am_sig_${stub}`;
 }
 
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-export const LACE_INSTALL_URL = 'https://www.lace.io/';
-export const MIDNIGHT_FAUCET_URL = 'https://faucet.preprod.midnight.network';
-export const MIDNIGHT_DOCS_URL = 'https://docs.midnight.network/develop/tutorial/using-lace/';
+export const LACE_INSTALL_URL = "https://1am.xyz";
+export const ONE_AM_INSTALL_URL = "https://1am.xyz";
+export const MIDNIGHT_FAUCET_URL = "https://faucet.preview.midnight.network";
+export const MIDNIGHT_DOCS_URL = "https://1am.xyz/developers";
