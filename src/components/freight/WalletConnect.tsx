@@ -16,6 +16,22 @@ import { truncateAddress, isLaceInstalled, getDetectedWallets, getWalletSession 
 import type { MidnightNetwork } from "@/lib/lace-wallet";
 import { ONE_AM_INSTALL_URL, MIDNIGHT_FAUCET_URL } from "@/lib/lace-wallet";
 
+function formatBalance(valStr: string): string {
+  try {
+    const b = BigInt(valStr);
+    if (b === 0n) return "0";
+    if (b >= 1_000_000_000_000n) {
+      return (Number(b / 1_000_000_000n) / 1000).toFixed(2) + "M";
+    }
+    if (b >= 1_000_000n) {
+      return (Number(b / 1_000n) / 1000).toFixed(2) + "K";
+    }
+    return b.toLocaleString();
+  } catch {
+    return valStr;
+  }
+}
+
 export function WalletConnect({ size = "default" }: { size?: "default" | "lg" }) {
   const { wallet, role, connecting, connect, disconnect } = useFreight();
   const [open, setOpen] = useState(false);
@@ -71,10 +87,10 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Wallet className="size-5 text-primary" />
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Wallet className="size-5 text-primary shrink-0" />
             1AM Wallet
           </DialogTitle>
           <DialogDescription className="uppercase tracking-widest text-[10px] text-muted-foreground flex items-center gap-1">
@@ -85,10 +101,10 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
         {wallet && !role ? (
           <RoleSelect onSelected={() => setOpen(false)} />
         ) : wallet ? (
-          /* ── Connected State (1AM Wallet & MidRoll Dashboard style) ── */
-          <div className="space-y-4">
+          /* ── Connected State (MidRoll & 1AM Dashboard style) ── */
+          <div className="space-y-4 max-w-full">
             {/* Status badges */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">Extension Active</span>
@@ -102,13 +118,13 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             {/* Unshielded Address */}
             <div className="space-y-1">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Unshielded Address</p>
-              <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2.5">
+              <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2.5 max-w-full">
                 <p className="flex-1 truncate font-mono text-xs text-foreground">{wallet.address}</p>
                 <button
                   onClick={() => handleCopy(wallet.address, "address")}
                   className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {copied === "address" ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  {copied === "address" ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
                 </button>
               </div>
             </div>
@@ -119,9 +135,9 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
                 <Shield className="size-3" />
                 Shielded Key Commitment
               </p>
-              <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2.5">
+              <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2.5 max-w-full">
                 <p className="flex-1 truncate font-mono text-xs text-foreground">
-                  {session?.coinPublicKey ? session.coinPublicKey : `${wallet.address.slice(0, 18)}...${wallet.address.slice(-8)}`}
+                  {session?.coinPublicKey ? session.coinPublicKey : wallet.address}
                 </p>
                 <button
                   onClick={() => handleCopy(session?.coinPublicKey || wallet.address, "key")}
@@ -134,19 +150,21 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
 
             {/* Balance cards */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-md border border-border p-3 bg-card">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">tNIGHT (Shielded / Unshielded)</p>
-                <p className="mt-1 text-lg font-bold text-foreground">
-                  {tNightShielded} / {tNightUnshielded} <span className="text-xs font-normal text-muted-foreground">tNIGHT</span>
+              <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tNIGHT (Shielded / Unshielded)</p>
+                <p className="mt-1 text-base font-bold text-foreground truncate">
+                  {formatBalance(tNightShielded)} / {formatBalance(tNightUnshielded)}{" "}
+                  <span className="text-xs font-normal text-muted-foreground">tNIGHT</span>
                 </p>
-                <span className="text-[9px] text-muted-foreground">Midnight Ledger</span>
+                <span className="text-[9px] text-muted-foreground block truncate">Midnight Ledger</span>
               </div>
-              <div className="rounded-md border border-border p-3 bg-card">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">tDUST Fuel</p>
-                <p className="mt-1 text-lg font-bold text-emerald-400">
-                  {tDustFuel} <span className="text-xs font-normal text-muted-foreground">tDUST</span>
+              <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tDUST Fuel</p>
+                <p className="mt-1 text-base font-bold text-emerald-400 truncate">
+                  {formatBalance(tDustFuel)}{" "}
+                  <span className="text-xs font-normal text-muted-foreground">tDUST</span>
                 </p>
-                <span className="text-[9px] text-emerald-400/80">ProofStation Sponsored</span>
+                <span className="text-[9px] text-emerald-400/80 block truncate">ProofStation Sponsored</span>
               </div>
             </div>
 
@@ -177,7 +195,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             {role && (
               <div className="flex items-center gap-2">
                 <RoleBadge role={role} />
-                <span className="text-xs text-muted-foreground">{wallet.network}</span>
+                <span className="text-xs text-muted-foreground truncate">{wallet.network}</span>
               </div>
             )}
 
@@ -207,7 +225,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
           </div>
         ) : (
           /* ── Not Connected — 1AM Extension Picker ── */
-          <div className="space-y-3">
+          <div className="space-y-3 max-w-full">
             <button
               type="button"
               disabled={connecting}
@@ -215,16 +233,16 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               id="1am-connect-button"
               className="veil-panel flex w-full items-center gap-3 p-4 text-left transition-colors hover:border-primary/50 disabled:opacity-60"
             >
-              <span className="flex size-10 items-center justify-center rounded-md bg-primary/15 text-primary">
+              <span className="flex size-10 items-center justify-center rounded-md bg-primary/15 text-primary shrink-0">
                 {connecting ? (
                   <Loader2 className="size-5 animate-spin" />
                 ) : (
                   <Zap className="size-5" />
                 )}
               </span>
-              <span className="flex-1">
+              <span className="flex-1 min-w-0">
                 <span className="block text-sm font-medium">1AM / Lace Wallet (Midnight)</span>
-                <span className="block text-xs text-muted-foreground">
+                <span className="block text-xs text-muted-foreground truncate">
                   {connecting
                     ? "Opening extension popup..."
                     : walletDetected

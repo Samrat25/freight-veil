@@ -105,7 +105,7 @@ function randomHex(length: number) {
  * Triggers real wallet transaction signing & fee balancing via injected Midnight extension.
  *
  * Popup Triggering:
- *   1. Calls walletAPI.balanceAndProveTransaction(tx, []) or balanceUnsealedTransaction(hex).
+ *   1. Calls walletAPI.balanceAndProveTransaction(tx, []) or balanceTransaction(tx).
  *   2. The injected extension (1AM / Lace) intercepts this call and opens the wallet extension POPUP window.
  *   3. User approves gas fees and confirms signing in the popup window.
  *   4. Calls submitTransaction() to broadcast to Midnight chain.
@@ -143,57 +143,56 @@ export async function executeSignedTransaction(
 
   const api = _liveWalletApi as Record<string, Function>;
 
-  // 1. Try 1AM balanceUnsealedTransaction(hex)
-  if (typeof api.balanceUnsealedTransaction === "function") {
-    console.info("[FreightVeil TX] Triggering 1AM balanceUnsealedTransaction() popup...");
-    const jsonStr = JSON.stringify(txPayload);
-    const hexPayload = Array.from(new TextEncoder().encode(jsonStr))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+  try {
+    // 1. Try Standard DApp Connector balanceAndProveTransaction(tx, newCoins)
+    if (typeof api.balanceAndProveTransaction === "function") {
+      console.info("[FreightVeil TX] Calling balanceAndProveTransaction() → Extension popup...");
+      const provedTx = await api.balanceAndProveTransaction.call(_liveWalletApi, txPayload, []);
+      console.info("[FreightVeil TX] ✅ Transaction approved and proved in wallet popup!");
 
-    const balancedRes = await api.balanceUnsealedTransaction.call(_liveWalletApi, hexPayload);
-    console.info("[FreightVeil TX] ✅ Transaction balanced by 1AM ProofStation! Result:", balancedRes);
-
-    const txHex = typeof balancedRes === "string" ? balancedRes : (balancedRes as { tx: string }).tx || hexPayload;
-
-    if (typeof api.submitTransaction === "function") {
-      console.info("[FreightVeil TX] Submitting transaction to Midnight network...");
-      await api.submitTransaction.call(_liveWalletApi, txHex);
-    }
-    return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
-  }
-
-  // 2. Try Standard DApp Connector balanceAndProveTransaction(tx, newCoins)
-  if (typeof api.balanceAndProveTransaction === "function") {
-    console.info("[FreightVeil TX] Triggering Lace/Connector balanceAndProveTransaction() popup...");
-    const provedTx = await api.balanceAndProveTransaction.call(_liveWalletApi, txPayload, []);
-    console.info("[FreightVeil TX] ✅ Transaction approved and proved in wallet popup!");
-
-    if (provedTx && typeof api.submitTransaction === "function") {
-      const txRes = await api.submitTransaction.call(_liveWalletApi, provedTx);
-      if (typeof txRes === "string") return txRes;
-      if (txRes && typeof txRes === "object" && "txHash" in (txRes as Record<string, unknown>)) {
-        return String((txRes as { txHash: string }).txHash);
+      if (provedTx && typeof api.submitTransaction === "function") {
+        const txRes = await api.submitTransaction.call(_liveWalletApi, provedTx);
+        if (typeof txRes === "string") return txRes;
+        if (txRes && typeof txRes === "object" && "txHash" in (txRes as Record<string, unknown>)) {
+          return String((txRes as { txHash: string }).txHash);
+        }
       }
+      return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
     }
-    return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
-  }
 
-  // 3. Try balanceTransaction fallback
-  if (typeof api.balanceTransaction === "function") {
-    console.info("[FreightVeil TX] Triggering balanceTransaction() popup...");
-    const provedTx = await api.balanceTransaction.call(_liveWalletApi, txPayload);
-    if (provedTx && typeof api.submitTransaction === "function") {
-      const txRes = await api.submitTransaction.call(_liveWalletApi, provedTx);
-      if (typeof txRes === "string") return txRes;
-      if (txRes && typeof txRes === "object" && "txHash" in (txRes as Record<string, unknown>)) {
-        return String((txRes as { txHash: string }).txHash);
+    // 2. Try balanceTransaction fallback
+    if (typeof api.balanceTransaction === "function") {
+      console.info("[FreightVeil TX] Calling balanceTransaction() → Extension popup...");
+      const provedTx = await api.balanceTransaction.call(_liveWalletApi, txPayload);
+      if (provedTx && typeof api.submitTransaction === "function") {
+        const txRes = await api.submitTransaction.call(_liveWalletApi, provedTx);
+        if (typeof txRes === "string") return txRes;
+        if (txRes && typeof txRes === "object" && "txHash" in (txRes as Record<string, unknown>)) {
+          return String((txRes as { txHash: string }).txHash);
+        }
       }
+      return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
     }
-    return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
-  }
 
-  throw new Error("Connected wallet API does not support balance/proving methods.");
+    // 3. 1AM balanceUnsealedTransaction fallback
+    if (typeof api.balanceUnsealedTransaction === "function") {
+      console.info("[FreightVeil TX] Calling balanceUnsealedTransaction()...");
+      const balancedRes = await api.balanceUnsealedTransaction.call(_liveWalletApi, txPayload);
+      const txHex = typeof balancedRes === "string" ? balancedRes : (balancedRes as { tx: string }).tx || "";
+
+      if (txHex && typeof api.submitTransaction === "function") {
+        console.info("[FreightVeil TX] Submitting transaction to Midnight network...");
+        await api.submitTransaction.call(_liveWalletApi, txHex);
+      }
+      return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
+    }
+
+    throw new Error("Connected wallet API does not support balance/proving methods.");
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[FreightVeil TX] Extension error for '${action}':`, errMsg);
+    throw new Error(`1AM / Midnight Wallet error: ${errMsg}`);
+  }
 }
 
 // Module-level wallet session for accessing unshielded address, etc.
