@@ -8,7 +8,7 @@
  *     company_id, notification messages (text only, no amounts).
  */
 
-import { supabase, supabaseAdmin } from "./supabase";
+import { supabase, supabaseAdmin, isSupabaseConfigured } from "./supabase";
 import type { BatchStatus } from "./supabase-types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -206,6 +206,7 @@ export async function syncRegisterProfile(
  * Resolves to the real status once indexer catches up.
  */
 export async function reconcilePendingBatches(): Promise<number> {
+  if (!isSupabaseConfigured) return 0;
   try {
     const { data: pending, error } = await supabase
       .from("batches_view")

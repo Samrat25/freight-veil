@@ -11,7 +11,7 @@ import {
 import * as chain from "./midnight-api";
 import type { AppRole, LegClaim, ShipmentBatch, WalletSession } from "./midnight-api";
 import { walletSignIn, walletSignOut, generateAuthChallenge } from "./supabase-auth";
-import { supabase } from "./supabase";
+import { supabase, isSupabaseConfigured } from "./supabase";
 import { reconcilePendingBatches } from "./supabase-sync";
 
 export interface ProtocolLogItem {
@@ -79,6 +79,7 @@ export function FreightProvider({ children }: { children: ReactNode }) {
   // Initial load: fetch batches + run pending-state reconciliation job
   useEffect(() => {
     async function loadAndReconcile() {
+      if (!isSupabaseConfigured) return;
       try {
         const { data, error } = await supabase.from("batches_public").select("*");
         if (!error && data && data.length > 0) {

@@ -20,11 +20,15 @@ const SUPABASE_ANON_KEY = import.meta.env["VITE_SUPABASE_ANON_KEY"] as
   | string
   | undefined;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.warn(
-    "[FreightVeil] Supabase env vars not set.\n" +
-      "Copy .env.example → .env and fill in VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.\n" +
-      "The app will run in offline/local-state mode until these are configured.",
+export const isSupabaseConfigured = Boolean(
+  SUPABASE_URL &&
+  SUPABASE_URL !== "https://placeholder.supabase.co" &&
+  !SUPABASE_URL.includes("placeholder")
+);
+
+if (!isSupabaseConfigured) {
+  console.info(
+    "[FreightVeil] Running in local/offline state mode (Supabase unconfigured or using placeholder URL).",
   );
 }
 
