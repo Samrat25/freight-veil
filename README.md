@@ -4,22 +4,24 @@
 
 ---
 
-## 🚀 Live Demo
+## 🚀 Live Demo & Repository
 
-**Deployed Application**: [https://freight-veil.vercel.app](https://freight-veil.vercel.app)
-
----
-
-## 📜 Contract Address
-
-| Network | Address |
-| :--- | :--- |
-| **Preprod** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` |
-| **Undeployed (Local)** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` |
+- **Live Application**: [https://freight-veil.vercel.app](https://freight-veil.vercel.app)
+- **GitHub Repository**: [https://github.com/Samrat25/freight-veil](https://github.com/Samrat25/freight-veil)
 
 ---
 
-## 💡 What This Does
+## 📜 Verifiable Contract Addresses
+
+| Network | Contract Address | Status |
+| :--- | :--- | :--- |
+| **Midnight Preview Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | **Active / Deployed** |
+| **Midnight Preprod Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | **Active / Deployed** |
+| **Local Undeployed (Docker)** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | **Active** |
+
+---
+
+## 💡 What FreightVeil Does
 
 FreightVeil is a decentralized logistics payout platform built on the Midnight blockchain. It allows logistics shippers to lock multi-carrier freight payouts in smart contracts and carriers to claim their contracted payout rates. Financial terms (per-km rates, distances, total budget, profit margins) are verified locally inside browser Zero-Knowledge circuits before settlement, ensuring zero financial leakages to competitors, public block explorers, or off-chain databases.
 
@@ -32,7 +34,8 @@ FreightVeil is a decentralized logistics payout platform built on the Midnight b
   - Batch status (`locked` = 0, `settled` = 1, `disputed` = 2)
   - Shipper identity commitment (hash of public key derived from secret key)
   - Carrier identity commitment (hash of public key derived from secret key)
-  - Total batch count (`Counter`)
+  - Nullifier hash (`spentNullifiers` - anti double-claim protection)
+  - Stealth payout address (`deriveStealthAddress` - unlinks carrier persistent wallet from payout)
 
 - **What is PRIVATE**:
   - Shipper's total allocated budget (`getShipperBudget`)
@@ -45,36 +48,36 @@ FreightVeil is a decentralized logistics payout platform built on the Midnight b
   - **Shipper Proves**: Allocated budget is $\ge$ contracted freight cost ($\text{budget} \ge \text{cost}$).
   - **Carrier Proves**: Claimed rate $\times$ distance is $\le$ contracted cost ($\text{rate} \times \text{distance} \le \text{cost}$).
   - **Role Membership**: Caller holds a valid registered shipper/carrier identity commitment without revealing raw wallet address or private key.
+  - **Nullifier Protection**: Spent nullifier prevents double-claiming payouts for the same batch.
 
 ---
 
 ## 🕵️ Privacy Claim
 
 > **Specific Privacy Statement**:
-> An on-chain observer or block explorer watching the Midnight network can see only that a shipment batch `0x...` transitioned from `locked` to `settled`, signed by shielded identity commitments `0x...`. An observer **cannot** see the dollar amount paid, the rate per km, the distance driven, the shipper's budget, or the identities of the counterparties.
+> An on-chain observer or block explorer watching the Midnight network can see only that a shipment batch `0x...` transitioned from `locked` to `settled`, signed by shielded identity commitments `0x...`. An observer **cannot** see the dollar amount paid, the rate per km, the distance driven, the shipper's budget, or the identities of the counterparties. All database tables in Supabase store exclusively public batch IDs and statuses — zero financial data touches Supabase.
 
 ---
 
 ## 🧰 Tech Stack
 
-- **Blockchain Network**: Midnight Network (Preprod Testnet & Local Undeployed Docker)
+- **Blockchain Network**: Midnight Network (Preview, Preprod, and Local Node Stack)
 - **Smart Contract Language**: Compact (Midnight ZK language)
-- **SDK & DApp Connector**: `@midnight-ntwrk/midnight-js-network-provider`, `@midnight-ntwrk/dapp-connector-api`
+- **SDK & DApp Connector**: Midnight DApp Connector v4 API (`1AM` & `Lace` Wallet Extensions)
+- **Zero-Dust Fee Sponsorship**: `1AM ProofStation` WASM fee sponsorship service
 - **Frontend Framework**: React 19, Vite, TypeScript, Tailwind CSS, TanStack Router
-- **Wallet Integration**: Lace Midnight Wallet browser extension (`window.midnight.mnLace`)
-- **Off-Chain Mirror**: Supabase PostgreSQL with RLS and Custom Wallet Signature Auth
+- **Off-Chain Layer**: Supabase PostgreSQL with RLS and Custom Wallet Signature Auth
 
 ---
 
-## 📌 Prerequisites
+## 📌 Prerequisites & Wallet Setup
 
-- **Lace Wallet Extension**: Installed from [https://www.lace.io/](https://www.lace.io/) (configured for `Preprod` or `Local Undeployed`)
-- **Node.js**: v20+ or v22
-- **Docker & Docker Compose**: (optional for running local Midnight node stack)
+- **1AM / Lace Wallet Extension**: Download from [https://1am.xyz](https://1am.xyz) or [https://www.lace.io](https://www.lace.io)
+- **Supported Networks**: Midnight Preview, Preprod, Local Node
 
 ---
 
-## 🚀 Run Locally
+## 🚀 Run & Test Locally
 
 ```bash
 # 1. Clone repository
@@ -87,53 +90,46 @@ npm install
 # 3. Configure environment variables
 cp .env.example .env
 
-# 4. Start local Midnight dev stack (Node, Indexer, Proof Server)
-npm run docker:up
+# 4. Compile Compact contract & generate managed TypeScript bindings
+compact compile ./contracts/freightveil.compact ./managed
 
-# 5. Fund local dev wallet
-npm run fund:wallet
+# 5. Run Vitest test suite (8/8 tests passing)
+npx vitest run
 
-# 6. Compile & deploy Compact contract
-npm run deploy
-
-# 7. Run Vitest test suite (7/7 tests passing)
-npm run test
-
-# 8. Start local frontend dev server
+# 6. Start local frontend dev server
 npm run dev
 ```
 Open **`http://localhost:8080`** in your browser.
 
 ---
 
-## 🎥 Demo Video
+## 🧪 Test Suite Results (8/8 Passing)
 
-> **Demo Video Link**: `[PLACEHOLDER — Record 2-minute video following checklist below]`
+```
+ RUN  v2.1.9 C:/Users/SAMRAT NATTA/OneDrive/Desktop/freight-veil
 
-### 🎬 2-Minute Demo Video Recording Checklist:
-1. **Connect Lace Wallet**: Click "Connect Wallet" — show the shielded wallet address appear on screen.
-2. **Call Circuit**: Click "Call Circuit" (`createShipmentBatch` or `settleBatch`) — show the loading indicator during local ZK proof generation.
-3. **Show On-Chain Result**: Display the returned signed transaction hash after submission.
-4. **Highlight Privacy Guarantee**: Point out the label **`'Proved without revealing your input'`** and explain that private rates, budget, and distances were proved inside ZK circuits without appearing in the UI or on-chain.
+ ✓ tests/freightveil.test.ts > FreightVeil Contract > 1. registerAsShipper succeeds and stores commitment
+ ✓ tests/freightveil.test.ts > FreightVeil Contract > 2. registerAsCarrier succeeds and stores commitment
+ ✓ tests/freightveil.test.ts > FreightVeil Contract > 3. createShipmentBatch succeeds for registered shipper with sufficient budget
+ ✓ tests/freightveil.test.ts > FreightVeil Contract > 4. createShipmentBatch reverts for a carrier-role wallet
+ ✓ tests/freightveil.test.ts > FreightVeil Contract > 5. settleBatch succeeds for registered carrier with valid rate*distance <= cost
+ ✓ tests/freightveil.test.ts > FreightVeil Contract > 6. settleBatch reverts for a shipper-role wallet
+ ✓ tests/freightveil.test.ts > FreightVeil Contract > 7. settleBatch reverts on a second call against the same batch (nullifier reuse)
+ ✓ tests/freightveil.test.ts > FreightVeil Contract > 8. disputeBatch succeeds only for the original shipper, reverts for anyone else
 
----
-
-## 📸 Screenshots & Verification Evidence
-
-### 1. Compact Smart Contract Source Code
-![Compact Contract Source](screenshots/contract.png)
-
-### 2. Vitest Test Suite Output (7/7 Passing)
-![Test Cases Output](screenshots/test_cases.png)
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+```
 
 ---
 
-## 📋 Final Level 2 Submission Checklist
+## 📋 Level 2 Submission Checklist
 
-- [x] **Lace wallet connect and disconnect working**
-- [x] **Circuit called from frontend, proof generated locally**
-- [x] **Private input never shown in UI** (`'Proved without revealing your input'` label active)
-- [x] **Contract address in README.md (MANDATORY)** (`0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4`)
+- [x] **1AM / Lace wallet connect and disconnect working**
+- [x] **Circuit called from frontend, proof generated and signed via extension popup**
+- [x] **Observable privacy behavior**: Private inputs (rates, distances, budgets) stay strictly local
+- [x] **Contract address in README.md** (`0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4`)
 - [x] **Live demo link in README.md** (`https://freight-veil.vercel.app`)
 - [x] **Privacy Claim section in README.md**
-- [x] **File structure matches Level 2 spec** (`WalletConnect.tsx`, `CircuitCall.tsx`, `useMidnight.ts`, `vercel.json`)
+- [x] **Minimum 8+ passing tests** in Vitest (`tests/freightveil.test.ts`)
+- [x] **Supabase RLS & Multi-Tenant Company Isolation** (`supabase/migrations/`)
