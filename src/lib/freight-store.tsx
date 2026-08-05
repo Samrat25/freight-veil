@@ -24,7 +24,7 @@ interface FreightState {
   myBatches: ShipmentBatch[];
   /** Claims filed by the current session identity. */
   myClaims: LegClaim[];
-  connect: () => Promise<void>;
+  connect: (networkId?: import("./lace-wallet").MidnightNetwork) => Promise<void>;
   selectRole: (role: AppRole) => void;
   disconnect: () => Promise<void>;
   createBatch: (input: {
@@ -80,10 +80,10 @@ export function FreightProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Connect wallet + issue Supabase session ────────────────────────────────
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (networkId?: import("./lace-wallet").MidnightNetwork) => {
     setConnecting(true);
     try {
-      const session = await chain.connectWallet();
+      const session = await chain.connectWallet(networkId);
       setWallet(session);
 
       // Issue signed auth challenge for wallet owner verification

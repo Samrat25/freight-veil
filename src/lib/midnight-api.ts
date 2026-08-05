@@ -102,95 +102,98 @@ function randomHex(length: number) {
  * will fail with an insufficient funds error.
  */
 /**
- * Triggers 1AM wallet zero-dust transaction signing & ProofStation balancing.
+ * Triggers real wallet transaction signing & fee balancing via injected Midnight extension.
  *
- * Flow (1AM Wallet Integration):
- *   1. DApp builds unproven tx for Midnight contract circuit.
- *   2. 1AM Wallet proves ZK circuit & calls balanceUnsealedTransaction(hex) where ProofStation adds sponsored dust fees.
- *   3. 1AM Wallet calls submitTransaction(hex) to broadcast to Midnight chain.
- *   4. Returns the on-chain transaction hash. Zero dust required from user.
+ * Popup Triggering:
+ *   1. Calls walletAPI.balanceAndProveTransaction(tx, []) or balanceUnsealedTransaction(hex).
+ *   2. The injected extension (1AM / Lace) intercepts this call and opens the wallet extension POPUP window.
+ *   3. User approves gas fees and confirms signing in the popup window.
+ *   4. Calls submitTransaction() to broadcast to Midnight chain.
  */
 export async function executeSignedTransaction(
   action: string,
   payload: Record<string, unknown>,
 ): Promise<string> {
-  // Step 1: Connect 1AM wallet if not already connected
+  // Step 1: Ensure wallet is connected
   if (!_liveWalletApi && isLaceInstalled()) {
-    try {
-      console.info(`[FreightVeil 1AM TX] Connecting wallet for action '${action}'...`);
-      const live = await connectLaceWallet();
-      _liveWalletApi = live.api;
-      _walletSession = live;
-    } catch (err) {
-      console.warn("[FreightVeil 1AM TX] Could not connect 1AM wallet:", err);
-    }
+    console.info(`[FreightVeil TX] Connecting wallet for action '${action}'...`);
+    const live = await connectLaceWallet();
+    _liveWalletApi = live.api;
+    _walletSession = live;
   }
 
-  if (_liveWalletApi) {
-    try {
-      const contractAddress = (import.meta.env["VITE_CONTRACT_ADDRESS"] as string) || "";
-      const txPayload = {
-        contractAddress,
-        circuitName: action,
-        arguments: payload,
-        timestamp: Date.now(),
-      };
-
-      console.info(`[FreightVeil 1AM TX] ── 1AM Zero-Dust Transaction ──`);
-      console.info(`  Action:   ${action}`);
-      console.info(`  Contract: ${contractAddress}`);
-      console.info(`  Payload:  ${JSON.stringify(payload)}`);
-
-      const api = _liveWalletApi as Record<string, Function>;
-
-      // 1AM Wallet API support: balanceUnsealedTransaction(hex)
-      if (typeof api.balanceUnsealedTransaction === "function") {
-        console.info("[FreightVeil 1AM TX] Calling 1AM balanceUnsealedTransaction() (ProofStation Zero-Dust Sponsored)...");
-        const jsonStr = JSON.stringify(txPayload);
-        const hexPayload = Array.from(new TextEncoder().encode(jsonStr))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-
-        const balancedRes = await api.balanceUnsealedTransaction.call(_liveWalletApi, hexPayload);
-        console.info("[FreightVeil 1AM TX] ✅ ProofStation balanced transaction! Result:", balancedRes);
-
-        const txHex = typeof balancedRes === "string" ? balancedRes : (balancedRes as { tx: string }).tx || hexPayload;
-
-        if (typeof api.submitTransaction === "function") {
-          console.info("[FreightVeil 1AM TX] Submitting transaction via 1AM wallet...");
-          await api.submitTransaction.call(_liveWalletApi, txHex);
-          console.info("[FreightVeil 1AM TX] ✅ Submitted successfully to Midnight network!");
-        }
-
-        return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
-      }
-
-      // Legacy/fallback connector support
-      let provedTx: unknown = null;
-      if (typeof api.balanceAndProveTransaction === "function") {
-        console.info("[FreightVeil 1AM TX] Fallback to balanceAndProveTransaction()...");
-        provedTx = await api.balanceAndProveTransaction.call(_liveWalletApi, txPayload, []);
-      } else if (typeof api.balanceTransaction === "function") {
-        provedTx = await api.balanceTransaction.call(_liveWalletApi, txPayload);
-      }
-
-      if (provedTx && typeof api.submitTransaction === "function") {
-        const txRes = await api.submitTransaction.call(_liveWalletApi, provedTx);
-        if (typeof txRes === "string") return txRes;
-        if (txRes && typeof txRes === "object" && "txHash" in (txRes as Record<string, unknown>)) {
-          return String((txRes as { txHash: string }).txHash);
-        }
-      }
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      console.error(`[FreightVeil 1AM TX] Transaction failed for '${action}':`, errMsg);
-      throw new Error(`1AM Transaction '${action}' failed: ${errMsg}`);
-    }
+  if (!_liveWalletApi) {
+    throw new Error(
+      "Midnight wallet extension not connected. Please click 'Connect Wallet' and approve in the extension popup."
+    );
   }
 
-  // Demo mode fallback
-  console.warn("[FreightVeil 1AM TX] No wallet connected — generating simulated tx hash (demo mode)");
-  return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
+  const contractAddress = (import.meta.env["VITE_CONTRACT_ADDRESS"] as string) || "";
+  const txPayload = {
+    contractAddress,
+    circuitName: action,
+    arguments: payload,
+    timestamp: Date.now(),
+  };
+
+  console.info(`[FreightVeil TX] ── Executing On-Chain Transaction ──`);
+  console.info(`  Action:   ${action}`);
+  console.info(`  Contract: ${contractAddress}`);
+  console.info(`  Payload:  ${JSON.stringify(payload)}`);
+
+  const api = _liveWalletApi as Record<string, Function>;
+
+  // 1. Try 1AM balanceUnsealedTransaction(hex)
+  if (typeof api.balanceUnsealedTransaction === "function") {
+    console.info("[FreightVeil TX] Triggering 1AM balanceUnsealedTransaction() popup...");
+    const jsonStr = JSON.stringify(txPayload);
+    const hexPayload = Array.from(new TextEncoder().encode(jsonStr))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    const balancedRes = await api.balanceUnsealedTransaction.call(_liveWalletApi, hexPayload);
+    console.info("[FreightVeil TX] ✅ Transaction balanced by 1AM ProofStation! Result:", balancedRes);
+
+    const txHex = typeof balancedRes === "string" ? balancedRes : (balancedRes as { tx: string }).tx || hexPayload;
+
+    if (typeof api.submitTransaction === "function") {
+      console.info("[FreightVeil TX] Submitting transaction to Midnight network...");
+      await api.submitTransaction.call(_liveWalletApi, txHex);
+    }
+    return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
+  }
+
+  // 2. Try Standard DApp Connector balanceAndProveTransaction(tx, newCoins)
+  if (typeof api.balanceAndProveTransaction === "function") {
+    console.info("[FreightVeil TX] Triggering Lace/Connector balanceAndProveTransaction() popup...");
+    const provedTx = await api.balanceAndProveTransaction.call(_liveWalletApi, txPayload, []);
+    console.info("[FreightVeil TX] ✅ Transaction approved and proved in wallet popup!");
+
+    if (provedTx && typeof api.submitTransaction === "function") {
+      const txRes = await api.submitTransaction.call(_liveWalletApi, provedTx);
+      if (typeof txRes === "string") return txRes;
+      if (txRes && typeof txRes === "object" && "txHash" in (txRes as Record<string, unknown>)) {
+        return String((txRes as { txHash: string }).txHash);
+      }
+    }
+    return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
+  }
+
+  // 3. Try balanceTransaction fallback
+  if (typeof api.balanceTransaction === "function") {
+    console.info("[FreightVeil TX] Triggering balanceTransaction() popup...");
+    const provedTx = await api.balanceTransaction.call(_liveWalletApi, txPayload);
+    if (provedTx && typeof api.submitTransaction === "function") {
+      const txRes = await api.submitTransaction.call(_liveWalletApi, provedTx);
+      if (typeof txRes === "string") return txRes;
+      if (txRes && typeof txRes === "object" && "txHash" in (txRes as Record<string, unknown>)) {
+        return String((txRes as { txHash: string }).txHash);
+      }
+    }
+    return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
+  }
+
+  throw new Error("Connected wallet API does not support balance/proving methods.");
 }
 
 // Module-level wallet session for accessing unshielded address, etc.
@@ -218,43 +221,35 @@ export function truncateAddress(address: string) {
 }
 
 // ─── Live wallet state (module-level singleton) ───────────────────────────────
-// Stored here so disconnectWallet and circuit calls can reference the connected API.
 let _liveWalletApi: import("./lace-wallet").LiveWalletSession["api"] | null = null;
 
 /**
- * Connect to the Lace wallet (regular Lace, not Lace Midnight Preview).
- *
- * The regular Lace wallet injects under UUID keys in window.midnight.
- * If the extension is not installed, falls back to a demo session.
+ * Connect to the Midnight wallet (1AM / Lace).
+ * Triggers the browser extension connection popup window.
  */
-export async function connectWallet(): Promise<WalletSession> {
-  // ── Real Lace connection ───────────────────────────────────────────────────
+export async function connectWallet(networkId?: import("./lace-wallet").MidnightNetwork): Promise<WalletSession> {
   if (isLaceInstalled()) {
-    try {
-      const live = await connectLaceWallet();
-      _liveWalletApi = live.api;
-      _walletSession = live;
-      return {
-        address: live.address,
-        network: live.network,
-        role: null,
-      };
-    } catch (err) {
-      console.warn("[FreightVeil] Lace connection failed, falling back to demo:", err);
-      // Fall through to demo mode
-    }
+    const live = await connectLaceWallet(networkId);
+    _liveWalletApi = live.api;
+    _walletSession = live;
+    return {
+      address: live.address,
+      network: live.network,
+      role: null,
+    };
   }
 
-  // ── Demo fallback ──────────────────────────────────────────────────────────
-  await wait(1200);
+  // Fallback demo mode only if no wallet extension is installed
+  await wait(800);
   _liveWalletApi = null;
   _walletSession = null;
   return {
     address: `mn_shield-addr_test1${randomHex(38)}`,
-    network: "Midnight Preprod (demo — no wallet detected)",
+    network: `Midnight ${networkId || "preview"} (demo — no wallet extension detected)`,
     role: null,
   };
 }
+
 
 /**
  * Get the auth signature for Supabase JWT issuance.

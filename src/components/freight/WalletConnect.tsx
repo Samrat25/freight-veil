@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useFreight } from "@/lib/freight-store";
 import { RoleSelect } from "./RoleSelect";
 import { RoleBadge } from "./RoleBadge";
-import { truncateAddress, isLaceInstalled, getDetectedWallets } from "@/lib/midnight-api";
+import { truncateAddress, isLaceInstalled, getDetectedWallets, getWalletSession } from "@/lib/midnight-api";
 import type { MidnightNetwork } from "@/lib/lace-wallet";
 import { ONE_AM_INSTALL_URL, MIDNIGHT_FAUCET_URL } from "@/lib/lace-wallet";
 
@@ -23,6 +23,11 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
   const [walletDetected, setWalletDetected] = useState(false);
   const [detectedWallets, setDetectedWallets] = useState<string[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState<MidnightNetwork>("preview");
+
+  const session = getWalletSession();
+  const tNightShielded = session?.balances?.tNightShielded?.toString() ?? "0";
+  const tNightUnshielded = session?.balances?.tNightUnshielded?.toString() ?? "0";
+  const tDustFuel = session?.balances?.tDust?.toString() ?? "0";
 
   useEffect(() => {
     const check = () => {
@@ -38,6 +43,13 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
     navigator.clipboard?.writeText(text);
     setCopied(label);
     setTimeout(() => setCopied(null), 1500);
+  };
+
+  const handleNetworkSwitch = async (net: MidnightNetwork) => {
+    setSelectedNetwork(net);
+    if (wallet) {
+      await connect(net);
+    }
   };
 
   return (
@@ -66,7 +78,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             1AM Wallet
           </DialogTitle>
           <DialogDescription className="uppercase tracking-widest text-[10px] text-muted-foreground flex items-center gap-1">
-            Midnight Network · Zero-Dust ProofStation
+            Midnight Network · Real Extension Signing & ProofStation
           </DialogDescription>
         </DialogHeader>
 
@@ -79,11 +91,11 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">1AM Connected</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">Extension Active</span>
               </div>
               <span className="flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
                 <Zap className="size-3" />
-                Zero-Dust Sponsored
+                Real Extension Signing
               </span>
             </div>
 
@@ -109,10 +121,10 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               </p>
               <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2.5">
                 <p className="flex-1 truncate font-mono text-xs text-foreground">
-                  {wallet.address.slice(0, 18)}...{wallet.address.slice(-8)}
+                  {session?.coinPublicKey ? session.coinPublicKey : `${wallet.address.slice(0, 18)}...${wallet.address.slice(-8)}`}
                 </p>
                 <button
-                  onClick={() => handleCopy(wallet.address, "key")}
+                  onClick={() => handleCopy(session?.coinPublicKey || wallet.address, "key")}
                   className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {copied === "key" ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
@@ -123,16 +135,16 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             {/* Balance cards */}
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-md border border-border p-3 bg-card">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">tNIGHT Balance</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">tNIGHT (Shielded / Unshielded)</p>
                 <p className="mt-1 text-lg font-bold text-foreground">
-                  0 <span className="text-xs font-normal text-muted-foreground">tNIGHT</span>
+                  {tNightShielded} / {tNightUnshielded} <span className="text-xs font-normal text-muted-foreground">tNIGHT</span>
                 </p>
-                <span className="text-[9px] text-muted-foreground">Private ZK Ledger</span>
+                <span className="text-[9px] text-muted-foreground">Midnight Ledger</span>
               </div>
               <div className="rounded-md border border-border p-3 bg-card">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground">tDUST Fuel</p>
                 <p className="mt-1 text-lg font-bold text-emerald-400">
-                  0 <span className="text-xs font-normal text-muted-foreground">tDUST</span>
+                  {tDustFuel} <span className="text-xs font-normal text-muted-foreground">tDUST</span>
                 </p>
                 <span className="text-[9px] text-emerald-400/80">ProofStation Sponsored</span>
               </div>
@@ -145,17 +157,17 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
                 Target Midnight Network
               </p>
               <div className="grid grid-cols-3 gap-2">
-                {(["preview", "preprod", "mainnet"] as MidnightNetwork[]).map((net) => (
+                {(["preview", "preprod", "undeployed"] as MidnightNetwork[]).map((net) => (
                   <button
                     key={net}
-                    onClick={() => setSelectedNetwork(net)}
+                    onClick={() => handleNetworkSwitch(net)}
                     className={`rounded-md border px-2.5 py-1.5 text-xs font-medium capitalize transition-colors ${
                       selectedNetwork === net
-                        ? "border-primary bg-primary/10 text-primary"
+                        ? "border-primary bg-primary/10 text-primary font-bold"
                         : "border-border text-muted-foreground hover:border-primary/50"
                     }`}
                   >
-                    {net}
+                    {net === "undeployed" ? "Local" : net}
                   </button>
                 ))}
               </div>
@@ -199,7 +211,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             <button
               type="button"
               disabled={connecting}
-              onClick={() => connect()}
+              onClick={() => connect(selectedNetwork)}
               id="1am-connect-button"
               className="veil-panel flex w-full items-center gap-3 p-4 text-left transition-colors hover:border-primary/50 disabled:opacity-60"
             >
@@ -211,12 +223,12 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
                 )}
               </span>
               <span className="flex-1">
-                <span className="block text-sm font-medium">1AM Wallet (Midnight)</span>
+                <span className="block text-sm font-medium">1AM / Lace Wallet (Midnight)</span>
                 <span className="block text-xs text-muted-foreground">
                   {connecting
-                    ? "Connecting to 1AM..."
+                    ? "Opening extension popup..."
                     : walletDetected
-                    ? "1AM extension detected ✓"
+                    ? "Browser extension detected ✓"
                     : detectedWallets.length > 0
                     ? `Wallets: ${detectedWallets.join(", ")}`
                     : "Zero-dust sponsored transactions"}
@@ -224,11 +236,35 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               </span>
             </button>
 
+            {/* Network pre-selector before connecting */}
+            <div className="rounded-md border border-border p-3">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1 mb-2">
+                <Globe className="size-3" />
+                Select Network Before Connecting
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {(["preview", "preprod", "undeployed"] as MidnightNetwork[]).map((net) => (
+                  <button
+                    key={net}
+                    type="button"
+                    onClick={() => setSelectedNetwork(net)}
+                    className={`rounded-md border px-2.5 py-1.5 text-xs font-medium capitalize transition-colors ${
+                      selectedNetwork === net
+                        ? "border-primary bg-primary/10 text-primary font-bold"
+                        : "border-border text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    {net === "undeployed" ? "Local" : net}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {!walletDetected && !connecting && (
               <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-400">
                 <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                 <span>
-                  1AM wallet not detected.{" "}
+                  No Midnight wallet extension detected.{" "}
                   <a
                     href={ONE_AM_INSTALL_URL}
                     target="_blank"
@@ -246,8 +282,8 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
 
             <p className="text-xs text-muted-foreground">
               {walletDetected
-                ? "Click to connect your 1AM wallet. ProofStation automatically sponsors transaction fees."
-                : "Without 1AM wallet, the app operates in local simulation mode."}
+                ? "Clicking connect opens your browser extension popup to authorize the session."
+                : "Without a Midnight extension installed, the app operates in local dev mode."}
             </p>
           </div>
         )}
