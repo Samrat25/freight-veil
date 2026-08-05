@@ -3,6 +3,7 @@ import { Send, ListChecks, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RoleGate } from "@/components/freight/RoleGate";
 import { StatusBadge } from "@/components/freight/StatusBadge";
+import { LiveProtocolLog } from "@/components/freight/LiveProtocolLog";
 import { useFreight } from "@/lib/freight-store";
 
 export const Route = createFileRoute("/carrier")({
@@ -42,33 +43,43 @@ function CarrierDashboard() {
         </p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Your claims" value={String(myClaims.length)} />
-        <Stat label="Awaiting proof check" value={String(count("pending") + count("verified"))} />
-        <Stat label="Settled" value={String(count("settled"))} />
-      </div>
-
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <Action to="/submit-claim" icon={<Send className="size-4" />} label="Submit Claim" blurb="File a leg claim against a batch ID your shipper gave you." />
-        <Action to="/my-claims" icon={<ListChecks className="size-4" />} label="My Claims" blurb="Track your claims and payout confirmations." />
-        <Action to="/explorer" icon={<Eye className="size-4" />} label="Public Ledger" blurb="See exactly what an outside observer can read." />
-      </div>
-
-      <section className="mt-10 space-y-3">
-        <h2 className="text-base font-semibold">Recent activity</h2>
-        {myClaims.slice(0, 3).map((claim) => (
-          <div key={claim.claimId} className="veil-panel flex flex-wrap items-center gap-4 p-4">
-            <span className="font-mono text-sm text-primary">{claim.claimId}</span>
-            <StatusBadge status={claim.status} />
-            <span className="ml-auto font-mono text-xs text-muted-foreground">
-              {claim.batchId}
-            </span>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Main Content (2 cols) */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Stat label="Your claims" value={String(myClaims.length)} />
+            <Stat label="Awaiting proof check" value={String(count("pending") + count("verified"))} />
+            <Stat label="Settled" value={String(count("settled"))} />
           </div>
-        ))}
-        {myClaims.length === 0 ? (
-          <p className="veil-panel p-6 text-sm text-muted-foreground">No claims yet.</p>
-        ) : null}
-      </section>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Action to="/submit-claim" icon={<Send className="size-4" />} label="Submit Claim" blurb="File a leg claim against a batch ID your shipper gave you." />
+            <Action to="/my-claims" icon={<ListChecks className="size-4" />} label="My Claims" blurb="Track your claims and payout confirmations." />
+            <Action to="/explorer" icon={<Eye className="size-4" />} label="Public Ledger" blurb="See exactly what an outside observer can read." />
+          </div>
+
+          <section className="space-y-3">
+            <h2 className="text-base font-semibold">Recent activity</h2>
+            {myClaims.slice(0, 4).map((claim) => (
+              <div key={claim.claimId} className="veil-panel flex flex-wrap items-center gap-4 p-4">
+                <span className="font-mono text-sm text-primary">{claim.claimId}</span>
+                <StatusBadge status={claim.status} />
+                <span className="ml-auto font-mono text-xs text-muted-foreground">
+                  {claim.batchId}
+                </span>
+              </div>
+            ))}
+            {myClaims.length === 0 ? (
+              <p className="veil-panel p-6 text-sm text-muted-foreground">No claims yet.</p>
+            ) : null}
+          </section>
+        </div>
+
+        {/* Live Protocol Log Side Panel (1 col) */}
+        <div className="lg:col-span-1">
+          <LiveProtocolLog />
+        </div>
+      </div>
     </div>
   );
 }

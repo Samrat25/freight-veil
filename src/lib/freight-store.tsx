@@ -12,18 +12,26 @@ import * as chain from "./midnight-api";
 import type { AppRole, LegClaim, ShipmentBatch, WalletSession } from "./midnight-api";
 import { walletSignIn, walletSignOut, generateAuthChallenge } from "./supabase-auth";
 import { supabase } from "./supabase";
+import { reconcilePendingBatches } from "./supabase-sync";
+
+export interface ProtocolLogItem {
+  id: string;
+  time: string;
+  title: string;
+  detail: string;
+  status: "info" | "success" | "error";
+  txHash?: string;
+}
 
 interface FreightState {
   wallet: WalletSession | null;
   role: AppRole | null;
   connecting: boolean;
-  /** All on-chain rows. Real data only — no seed/mock rows. */
   batches: ShipmentBatch[];
   claims: LegClaim[];
-  /** Batches created by the current session identity. */
   myBatches: ShipmentBatch[];
-  /** Claims filed by the current session identity. */
   myClaims: LegClaim[];
+  logs: ProtocolLogItem[];
   connect: (networkId?: import("./lace-wallet").MidnightNetwork) => Promise<void>;
   selectRole: (role: AppRole) => void;
   disconnect: () => Promise<void>;
@@ -50,10 +58,27 @@ export function FreightProvider({ children }: { children: ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [batches, setBatches] = useState<ShipmentBatch[]>([]);
   const [claims, setClaims] = useState<LegClaim[]>([]);
+  const [logs, setLogs] = useState<ProtocolLogItem[]>([]);
 
-  // Load real batches from Supabase on mount
+  const addLog = useCallback(
+    (title: string, detail: string, status: "info" | "success" | "error" = "info", txHash?: string) => {
+      const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      const item: ProtocolLogItem = {
+        id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        time,
+        title,
+        detail,
+        status,
+        txHash,
+      };
+      setLogs((prev) => [item, ...prev.slice(0, 49)]);
+    },
+    [],
+  );
+
+  // Initial load: fetch batches + run pending-state reconciliation job
   useEffect(() => {
-    async function loadRealBatches() {
+    async function loadAndReconcile() {
       try {
         const { data, error } = await supabase.from("batches_public").select("*");
         if (!error && data && data.length > 0) {
@@ -66,112 +91,145 @@ export function FreightProvider({ children }: { children: ReactNode }) {
             budgetCommitment: `0x${Array.from(crypto.getRandomValues(new Uint8Array(20)), (b) => b.toString(16).padStart(2, "0")).join("")}`,
           }));
           setBatches((prev) => {
-            // merge without duplicates
             const existingIds = new Set(prev.map((b) => b.batchId));
             const newOnly = loaded.filter((b) => !existingIds.has(b.batchId));
             return [...prev, ...newOnly];
           });
         }
+
+        // Run reconciliation job for pending-state transactions
+        const count = await reconcilePendingBatches();
+        if (count > 0) {
+          addLog("Pending State Reconciled", `Reconciled ${count} pending batch(es) from indexer.`, "info");
+        }
       } catch (err) {
-        console.warn("[FreightVeil] Could not fetch remote batches:", err);
+        console.warn("[FreightVeil] Load/reconcile warning:", err);
       }
     }
-    loadRealBatches();
-  }, []);
+    loadAndReconcile();
+  }, [addLog]);
 
-  // ── Connect wallet + issue Supabase session ────────────────────────────────
+  // Connect wallet
   const connect = useCallback(async (networkId?: import("./lace-wallet").MidnightNetwork) => {
     setConnecting(true);
     try {
       const session = await chain.connectWallet(networkId);
       setWallet(session);
+      addLog("Wallet Connected", `Connected to ${session.network} (${session.address.slice(0, 14)}...)`, "success");
 
-      // Issue signed auth challenge for wallet owner verification
       try {
         const challenge = generateAuthChallenge(session.address);
         const signature = await chain.getWalletSignature(challenge);
         await walletSignIn(session.address, challenge, signature);
+        addLog("JWT Session Issued", "Supabase custom wallet auth token verified.", "success");
       } catch (authErr) {
-        console.warn(
-          "[FreightVeil] Supabase sign-in skipped (auth endpoint offline):",
-          authErr,
-        );
+        console.warn("[FreightVeil] Supabase sign-in skipped:", authErr);
       }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      addLog("Wallet Connect Failed", msg, "error");
+      throw err;
     } finally {
       setConnecting(false);
     }
-  }, []);
+  }, [addLog]);
 
   const disconnect = useCallback(async () => {
     await chain.disconnectWallet();
     await walletSignOut().catch(() => {});
     setWallet(null);
-  }, []);
+    addLog("Wallet Disconnected", "Session cleared.", "info");
+  }, [addLog]);
 
-  /**
-   * Select role + trigger on-chain registration circuit with signed proof commitment.
-   */
   const selectRole = useCallback((role: AppRole) => {
     setWallet((prev) => (prev ? { ...prev, role } : prev));
-
     const address = walletRef.current?.address;
     if (address) {
+      addLog("Role Selected", `Registered as ${role.toUpperCase()} (Circuit: registerAs${role === "shipper" ? "Shipper" : "Carrier"})`, "info");
       if (role === "shipper") {
-        chain.registerAsShipper(address).catch((err) =>
-          console.warn("[FreightVeil] registerAsShipper failed:", err),
-        );
+        chain.registerAsShipper(address)
+          .then(({ txHash }) => addLog("Role Circuit Verified", "shipperRole commitment published on-chain", "success", txHash))
+          .catch((err) => addLog("Role Circuit Failed", String(err), "error"));
       } else {
-        chain.registerAsCarrier(address).catch((err) =>
-          console.warn("[FreightVeil] registerAsCarrier failed:", err),
-        );
+        chain.registerAsCarrier(address)
+          .then(({ txHash }) => addLog("Role Circuit Verified", "carrierRole commitment published on-chain", "success", txHash))
+          .catch((err) => addLog("Role Circuit Failed", String(err), "error"));
       }
     }
-  }, []);
+  }, [addLog]);
 
-  // ── Batch actions ──────────────────────────────────────────────────────────
-
+  // Batch operations
   const createBatch = useCallback<FreightState["createBatch"]>(async (input) => {
     const owner = walletRef.current?.address;
     if (!owner) throw new Error("Wallet not connected");
-    // Trigger on-chain circuit call with signed transaction
-    const batch = await chain.createShipmentBatch({ ...input, owner });
-    setBatches((prev) => [batch, ...prev]);
-    return batch;
-  }, []);
+
+    addLog("Circuit Call Initiated", `createShipmentBatch(${input.batchId}) — Private Witness: Budget Check`, "info");
+    try {
+      const batch = await chain.createShipmentBatch({ ...input, owner });
+      setBatches((prev) => [batch, ...prev]);
+      addLog("Batch Created & Locked", `Status: locked (0). Budget witness verified inside ZK circuit.`, "success", batch.txHash);
+      return batch;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      addLog("Circuit Execution Failed", msg, "error");
+      throw err;
+    }
+  }, [addLog]);
 
   const settle = useCallback(async (batchId: string) => {
     const owner = walletRef.current?.address;
     if (!owner) throw new Error("Wallet not connected");
-    // Trigger on-chain circuit call with signed transaction
-    const res = await chain.settleBatch(batchId, owner);
-    setBatches((prev) =>
-      prev.map((b) => (b.batchId === res.batchId ? { ...b, status: res.status } : b)),
-    );
-    setClaims((prev) =>
-      prev.map((c) =>
-        c.batchId === res.batchId ? { ...c, status: "settled" as const } : c,
-      ),
-    );
-  }, []);
+
+    addLog("Circuit Call Initiated", `settleBatch(${batchId}) — Checking Nullifier & Rate*Distance`, "info");
+    try {
+      const res = await chain.settleBatch(batchId, owner);
+      setBatches((prev) =>
+        prev.map((b) => (b.batchId === res.batchId ? { ...b, status: res.status } : b)),
+      );
+      setClaims((prev) =>
+        prev.map((c) =>
+          c.batchId === res.batchId ? { ...c, status: "settled" as const } : c,
+        ),
+      );
+      addLog("Settlement Disclosed", `Status: settled (1). Nullifier spent, stealth address published.`, "success", res.txHash);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      addLog("Settlement Failed", msg, "error");
+      throw err;
+    }
+  }, [addLog]);
 
   const dispute = useCallback(async (batchId: string) => {
-    // Trigger on-chain circuit call with signed transaction
-    const res = await chain.disputeBatch(batchId);
-    setBatches((prev) =>
-      prev.map((b) => (b.batchId === res.batchId ? { ...b, status: res.status } : b)),
-    );
-  }, []);
+    addLog("Circuit Call Initiated", `disputeBatch(${batchId}) — Checking Shipper Ownership Commitment`, "info");
+    try {
+      const res = await chain.disputeBatch(batchId);
+      setBatches((prev) =>
+        prev.map((b) => (b.batchId === res.batchId ? { ...b, status: res.status } : b)),
+      );
+      addLog("Batch Disputed", `Status: disputed (2). Shipper ownership verified.`, "success", res.txHash);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      addLog("Dispute Failed", msg, "error");
+      throw err;
+    }
+  }, [addLog]);
 
   const submitClaim = useCallback<FreightState["submitClaim"]>(async (input) => {
     const owner = walletRef.current?.address;
     if (!owner) throw new Error("Wallet not connected");
-    // Trigger on-chain circuit call with signed transaction
-    const claim = await chain.submitCarrierClaim({ ...input, owner });
-    setClaims((prev) => [claim, ...prev]);
-    return claim;
-  }, []);
 
-  // ── Context value ──────────────────────────────────────────────────────────
+    addLog("Carrier Leg Claim", `submitCarrierClaim(${input.batchId}) — Private Witness: Rate & Distance`, "info");
+    try {
+      const claim = await chain.submitCarrierClaim({ ...input, owner });
+      setClaims((prev) => [claim, ...prev]);
+      addLog("Leg Claim Submitted", `Claim pending verification on batch ${input.batchId}`, "success");
+      return claim;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      addLog("Leg Claim Failed", msg, "error");
+      throw err;
+    }
+  }, [addLog]);
 
   const value = useMemo(
     () => ({
@@ -182,6 +240,7 @@ export function FreightProvider({ children }: { children: ReactNode }) {
       claims,
       myBatches: wallet ? batches.filter((b) => b.owner === wallet.address) : [],
       myClaims: wallet ? claims.filter((c) => c.owner === wallet.address) : [],
+      logs,
       connect,
       selectRole,
       disconnect,
@@ -195,6 +254,7 @@ export function FreightProvider({ children }: { children: ReactNode }) {
       connecting,
       batches,
       claims,
+      logs,
       connect,
       selectRole,
       disconnect,
