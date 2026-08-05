@@ -88,55 +88,120 @@ function randomHex(length: number) {
 }
 
 /**
- * Triggers the Lace extension wallet popup for transaction authorization & signing.
- * Calls balanceTransaction and submitTransaction on the connected Lace API.
+ * Triggers the Lace wallet popup for real transaction signing.
+ *
+ * Flow:
+ *   1. If wallet not connected → calls connectLaceWallet() to trigger auth popup
+ *   2. Constructs a transaction object for the Midnight contract circuit
+ *   3. Calls walletAPI.balanceAndProveTransaction(tx) → opens Lace popup
+ *      showing gas fees (tDUST) and asks user to approve/sign
+ *   4. Calls walletAPI.submitTransaction(provedTx) → broadcasts to network
+ *   5. Returns the on-chain transaction hash
+ *
+ * If the wallet doesn't have tDUST, the balanceAndProveTransaction call
+ * will fail with an insufficient funds error.
  */
 export async function executeSignedTransaction(
   action: string,
   payload: Record<string, unknown>,
 ): Promise<string> {
-  // If not connected yet but Lace is installed, connect now to open wallet popup
+  // Step 1: Connect wallet if not already connected
   if (!_liveWalletApi && isLaceInstalled()) {
     try {
-      console.info(`[Lace Wallet] Triggering extension connection popup for action '${action}'...`);
+      console.info(`[FreightVeil TX] Connecting wallet for action '${action}'...`);
       const live = await connectLaceWallet();
       _liveWalletApi = live.api;
+      _walletSession = live;
     } catch (err) {
-      console.warn("[FreightVeil] Could not connect Lace wallet for transaction:", err);
+      console.warn("[FreightVeil TX] Could not connect wallet:", err);
     }
   }
 
   if (_liveWalletApi) {
     try {
-      console.info(`[Lace Extension Popup] Opening transaction authorization popup for action '${action}'...`);
+      // Step 2: Build transaction object for the Midnight circuit call
+      const contractAddress = import.meta.env["VITE_CONTRACT_ADDRESS"] as string || "";
+      const tx = {
+        contractAddress,
+        circuitName: action,
+        arguments: payload,
+        // Midnight transactions use tDUST for gas
+        gasLimit: 1000000,
+      };
+
+      console.info(`[FreightVeil TX] ── Transaction Details ──`);
+      console.info(`  Action:   ${action}`);
+      console.info(`  Contract: ${contractAddress}`);
+      console.info(`  Payload:  ${JSON.stringify(payload)}`);
+
+      // Step 3: Balance + Prove → triggers Lace popup with gas fee display
+      // This is where the user sees tDUST fees and approves the transaction
       const api = _liveWalletApi as Record<string, Function>;
-      
-      // Try official Lace dApp connector methods
-      const balanceFn = api.balanceTransaction || api.balanceTx || api.signTx;
-      const submitFn = api.submitTransaction || api.submitTx;
+      let provedTx: unknown = null;
 
-      let balanced = null;
-      if (typeof balanceFn === "function") {
-        balanced = await balanceFn.call(_liveWalletApi, { action, ...payload });
+      if (typeof api.balanceAndProveTransaction === "function") {
+        console.info("[FreightVeil TX] Calling balanceAndProveTransaction() → Lace popup with gas fees...");
+        provedTx = await api.balanceAndProveTransaction.call(_liveWalletApi, tx, []);
+        console.info("[FreightVeil TX] ✅ Transaction balanced and proved (user approved in Lace)");
+      } else if (typeof api.balanceTransaction === "function") {
+        console.info("[FreightVeil TX] Calling balanceTransaction() → Lace popup...");
+        provedTx = await api.balanceTransaction.call(_liveWalletApi, tx);
+        console.info("[FreightVeil TX] ✅ Transaction balanced (user approved in Lace)");
+      } else {
+        console.warn("[FreightVeil TX] No balance method found on wallet API. Available:", Object.keys(api));
+        throw new Error("Wallet does not support balanceAndProveTransaction or balanceTransaction");
       }
 
-      let txRes = null;
-      if (typeof submitFn === "function" && balanced) {
-        txRes = await submitFn.call(_liveWalletApi, balanced);
+      // Step 4: Submit the proved/signed transaction to the network
+      if (provedTx && typeof api.submitTransaction === "function") {
+        console.info("[FreightVeil TX] Submitting proved transaction to Midnight network...");
+        const txRes = await api.submitTransaction.call(_liveWalletApi, provedTx);
+        console.info("[FreightVeil TX] ✅ Transaction submitted! Result:", txRes);
+
+        if (typeof txRes === "string") return txRes;
+        if (txRes && typeof txRes === "object" && "txHash" in (txRes as Record<string, unknown>)) {
+          return String((txRes as { txHash: string }).txHash);
+        }
+        // Some versions return the hash directly
+        return String(txRes);
       }
 
-      if (typeof txRes === "string") return txRes;
-      if (txRes && typeof txRes === "object" && "txHash" in txRes) {
-        return String((txRes as { txHash: string }).txHash);
+      console.warn("[FreightVeil TX] submitTransaction not available on wallet API");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[FreightVeil TX] Transaction failed for '${action}':`, errMsg);
+
+      // Check for common errors and give user-friendly messages
+      if (errMsg.includes("insufficient") || errMsg.includes("balance")) {
+        throw new Error(
+          `Insufficient tDUST balance for gas fees.\n\n` +
+          `To fund your wallet:\n` +
+          `1. Open Lace wallet → Midnight tab → click "Receive"\n` +
+          `2. Copy your Unshielded address\n` +
+          `3. Go to https://faucet.preprod.midnight.network\n` +
+          `4. Paste your address and request tNIGHT tokens\n` +
+          `5. Back in Lace, click "Generate tDUST"\n` +
+          `6. Wait for tDUST to appear, then retry this action`
+        );
       }
-    } catch (err) {
-      console.info(`[Lace Wallet] Transaction popup prompt completed for '${action}':`, err);
+      if (errMsg.includes("rejected") || errMsg.includes("denied") || errMsg.includes("cancel")) {
+        throw new Error("Transaction was rejected by the user in the Lace wallet popup.");
+      }
+      // Re-throw with context
+      throw new Error(`Transaction '${action}' failed: ${errMsg}`);
     }
   }
 
-  // Generate real cryptographic 32-byte transaction hash
+  // Fallback: generate a simulated transaction hash when no wallet is available
+  console.warn("[FreightVeil TX] No wallet connected — generating simulated tx hash (demo mode)");
   return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(32)))}`;
 }
+
+// Module-level wallet session for accessing unshielded address, etc.
+let _walletSession: import("./lace-wallet").LiveWalletSession | null = null;
+
+/** Get the current wallet session (if connected) */
+export function getWalletSession() { return _walletSession; }
 
 function commitment(): string {
   return `0x${bytesToHex(crypto.getRandomValues(new Uint8Array(20)))}`;
@@ -161,10 +226,10 @@ export function truncateAddress(address: string) {
 let _liveWalletApi: import("./lace-wallet").LiveWalletSession["api"] | null = null;
 
 /**
- * Connect to the Lace Midnight wallet extension.
+ * Connect to the Lace wallet (regular Lace, not Lace Midnight Preview).
  *
- * Tries `window.midnight.mnLace` first. If the extension is not installed,
- * falls back to a clearly-labelled demo session so the UI stays functional.
+ * The regular Lace wallet injects under UUID keys in window.midnight.
+ * If the extension is not installed, falls back to a demo session.
  */
 export async function connectWallet(): Promise<WalletSession> {
   // ── Real Lace connection ───────────────────────────────────────────────────
@@ -172,6 +237,7 @@ export async function connectWallet(): Promise<WalletSession> {
     try {
       const live = await connectLaceWallet();
       _liveWalletApi = live.api;
+      _walletSession = live;
       return {
         address: live.address,
         network: live.network,
@@ -184,31 +250,30 @@ export async function connectWallet(): Promise<WalletSession> {
   }
 
   // ── Demo fallback ──────────────────────────────────────────────────────────
-  // Clearly marked as demo — no real wallet is contacted.
   await wait(1200);
   _liveWalletApi = null;
+  _walletSession = null;
   return {
     address: `mn_shield-addr_test1${randomHex(38)}`,
-    network: "Midnight Preprod (demo)",
+    network: "Midnight Preprod (demo — no wallet detected)",
     role: null,
   };
 }
 
 /**
  * Get the auth signature for Supabase JWT issuance.
- * Uses real Lace signing if connected, stub if in demo mode.
  */
 export async function getWalletSignature(challenge: string): Promise<string> {
   if (_liveWalletApi) {
     return signAuthChallenge(_liveWalletApi, challenge);
   }
-  // Demo stub — accepted by the auth endpoint in dev mode
   return `demo_sig_${btoa(challenge.slice(0, 16)).replace(/[+/=]/g, "")}`;
 }
 
-/** Disconnect the dApp session and clear the live wallet reference. */
+/** Disconnect the dApp session and clear all wallet references. */
 export async function disconnectWallet(): Promise<void> {
   _liveWalletApi = null;
+  _walletSession = null;
   await wait(250);
 }
 
