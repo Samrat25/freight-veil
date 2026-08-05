@@ -269,10 +269,14 @@ export async function signAuthChallenge(
 ): Promise<string> {
   if (api.signData) {
     try {
-      const sig = await api.signData(new TextEncoder().encode(challenge));
+      // 1AM signData API expects data: string and options: { encoding: 'text' | 'hex' | 'base64' }
+      const sig = await (api.signData as (data: string, opts?: { encoding: string }) => Promise<unknown>)(
+        challenge,
+        { encoding: "text" },
+      );
       return `1am_sig_${typeof sig === "string" ? sig : JSON.stringify(sig)}`;
-    } catch {
-      /* fallback below */
+    } catch (err) {
+      console.warn("[1AM Wallet] signData fallback used:", err);
     }
   }
   const stub = btoa(`${challenge.slice(0, 32)}`).replace(/[+/=]/g, "");

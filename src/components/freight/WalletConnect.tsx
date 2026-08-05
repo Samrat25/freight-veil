@@ -16,17 +16,25 @@ import { truncateAddress, isLaceInstalled, getDetectedWallets, getWalletSession 
 import type { MidnightNetwork } from "@/lib/lace-wallet";
 import { ONE_AM_INSTALL_URL, MIDNIGHT_FAUCET_URL } from "@/lib/lace-wallet";
 
-function formatBalance(valStr: string): string {
+function formatTokenBalance(valStr: string, decimals = 6): string {
   try {
-    const b = BigInt(valStr);
-    if (b === 0n) return "0";
-    if (b >= 1_000_000_000_000n) {
-      return (Number(b / 1_000_000_000n) / 1000).toFixed(2) + "M";
+    const raw = BigInt(valStr);
+    if (raw === 0n) return "0";
+
+    // Standard Midnight token decimal scaling (10^6)
+    const divisor = 10n ** BigInt(decimals);
+    const whole = raw / divisor;
+
+    if (whole >= 1_000_000_000n) {
+      return (Number(whole) / 1_000_000_000).toFixed(2) + "B";
     }
-    if (b >= 1_000_000n) {
-      return (Number(b / 1_000n) / 1000).toFixed(2) + "K";
+    if (whole >= 1_000_000n) {
+      return (Number(whole) / 1_000_000).toFixed(2) + "M";
     }
-    return b.toLocaleString();
+    if (whole >= 1_000n) {
+      return (Number(whole) / 1_000).toFixed(2) + "K";
+    }
+    return Number(whole).toLocaleString();
   } catch {
     return valStr;
   }
@@ -87,7 +95,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg overflow-hidden">
+      <DialogContent className="sm:max-w-xl max-w-[95vw] overflow-hidden p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Wallet className="size-5 text-primary shrink-0" />
@@ -101,17 +109,17 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
         {wallet && !role ? (
           <RoleSelect onSelected={() => setOpen(false)} />
         ) : wallet ? (
-          /* ── Connected State (MidRoll & 1AM Dashboard style) ── */
+          /* ── Connected State ── */
           <div className="space-y-4 max-w-full">
             {/* Status badges */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">Extension Active</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Extension Active</span>
               </div>
-              <span className="flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest text-emerald-400">
+              <span className="flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-emerald-400 shrink-0">
                 <Zap className="size-3" />
-                Real Extension Signing
+                Real Signing
               </span>
             </div>
 
@@ -152,16 +160,16 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tNIGHT (Shielded / Unshielded)</p>
-                <p className="mt-1 text-base font-bold text-foreground truncate">
-                  {formatBalance(tNightShielded)} / {formatBalance(tNightUnshielded)}{" "}
+                <p className="mt-1 text-sm font-bold text-foreground truncate font-mono">
+                  {formatTokenBalance(tNightShielded)} / {formatTokenBalance(tNightUnshielded)}{" "}
                   <span className="text-xs font-normal text-muted-foreground">tNIGHT</span>
                 </p>
                 <span className="text-[9px] text-muted-foreground block truncate">Midnight Ledger</span>
               </div>
               <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tDUST Fuel</p>
-                <p className="mt-1 text-base font-bold text-emerald-400 truncate">
-                  {formatBalance(tDustFuel)}{" "}
+                <p className="mt-1 text-sm font-bold text-emerald-400 truncate font-mono">
+                  {formatTokenBalance(tDustFuel)}{" "}
                   <span className="text-xs font-normal text-muted-foreground">tDUST</span>
                 </p>
                 <span className="text-[9px] text-emerald-400/80 block truncate">ProofStation Sponsored</span>
@@ -224,7 +232,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             </Button>
           </div>
         ) : (
-          /* ── Not Connected — 1AM Extension Picker ── */
+          /* ── Not Connected ── */
           <div className="space-y-3 max-w-full">
             <button
               type="button"
