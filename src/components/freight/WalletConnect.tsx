@@ -161,7 +161,8 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tNIGHT (Shielded / Unshielded)</p>
                 <p className="mt-1 text-sm font-bold text-foreground truncate font-mono">
-                  {formatTokenBalance(tNightShielded)} / {formatTokenBalance(tNightUnshielded)}{" "}
+                  {typeof tNightShielded === "number" ? tNightShielded.toFixed(2) : tNightShielded} /{" "}
+                  {typeof tNightUnshielded === "number" ? tNightUnshielded.toFixed(2) : tNightUnshielded}{" "}
                   <span className="text-xs font-normal text-muted-foreground">tNIGHT</span>
                 </p>
                 <span className="text-[9px] text-muted-foreground block truncate">Midnight Ledger</span>
@@ -169,7 +170,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tDUST Fuel</p>
                 <p className="mt-1 text-sm font-bold text-emerald-400 truncate font-mono">
-                  {formatTokenBalance(tDustFuel)}{" "}
+                  {typeof tDustFuel === "number" ? tDustFuel.toFixed(2) : tDustFuel}{" "}
                   <span className="text-xs font-normal text-muted-foreground">tDUST</span>
                 </p>
                 <span className="text-[9px] text-emerald-400/80 block truncate">ProofStation Sponsored</span>

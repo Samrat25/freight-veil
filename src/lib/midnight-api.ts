@@ -144,11 +144,26 @@ export async function executeSignedTransaction(
   const api = _liveWalletApi as Record<string, Function>;
 
   try {
+    // 0. Trigger 1AM Real Signature Popup for transaction authorization
+    if (typeof api.signData === "function") {
+      console.info(`[FreightVeil TX] Triggering 1AM extension popup for action '${action}'...`);
+      const payloadString = JSON.stringify({
+        action,
+        contractAddress,
+        payload,
+        network: _walletSession?.networkId || "preview",
+        timestamp: Date.now(),
+      }, null, 2);
+      
+      await api.signData.call(_liveWalletApi, payloadString, { encoding: "text" });
+      console.info("[FreightVeil TX] ✅ Real 1AM extension popup approved and signed by user!");
+    }
+
     // 1. Try Standard DApp Connector balanceAndProveTransaction(tx, newCoins)
     if (typeof api.balanceAndProveTransaction === "function") {
       console.info("[FreightVeil TX] Calling balanceAndProveTransaction() → Extension popup...");
       const provedTx = await api.balanceAndProveTransaction.call(_liveWalletApi, txPayload, []);
-      console.info("[FreightVeil TX] ✅ Transaction approved and proved in wallet popup!");
+      console.info("[FreightVeil TX] ✅ Transaction proved!");
 
       if (provedTx && typeof api.submitTransaction === "function") {
         const txRes = await api.submitTransaction.call(_liveWalletApi, provedTx);

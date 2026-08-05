@@ -84,9 +84,9 @@ export interface LiveWalletSession {
   api: Midnight1AMConnectedAPI;
   serviceConfig: OneAMServiceConfig;
   balances: {
-    tNightShielded: bigint;
-    tNightUnshielded: bigint;
-    tDust: bigint;
+    tNightShielded: number;
+    tNightUnshielded: number;
+    tDust: number;
   };
 }
 
@@ -199,30 +199,39 @@ async function parseConnectedSession(
     dustAddress = "";
   }
 
-  // Fetch balances
-  let tNightShielded = 0n;
-  let tNightUnshielded = 0n;
-  let tDust = 0n;
+  // Fetch balances accurately matching 1AM / Lace DApp connector spec
+  let tNightShielded = 0;
+  let tNightUnshielded = 0;
+  let tDust = 0;
 
   try {
     const sBals = await connectedAPI.getShieldedBalances();
-    tNightShielded = Object.values(sBals).reduce((acc, val) => acc + BigInt(val), 0n);
-  } catch {
-    /* fallback 0 */
+    const vals = Object.values(sBals || {});
+    if (vals.length > 0) {
+      const raw = Number(vals[0]);
+      tNightShielded = isNaN(raw) ? 0 : raw / 1_000_000;
+    }
+  } catch (e) {
+    console.warn("[1AM Wallet] getShieldedBalances warning:", e);
   }
 
   try {
     const uBals = await connectedAPI.getUnshieldedBalances();
-    tNightUnshielded = Object.values(uBals).reduce((acc, val) => acc + BigInt(val), 0n);
-  } catch {
-    /* fallback 0 */
+    const vals = Object.values(uBals || {});
+    if (vals.length > 0) {
+      const raw = Number(vals[0]);
+      tNightUnshielded = isNaN(raw) ? 0 : raw / 1_000_000;
+    }
+  } catch (e) {
+    console.warn("[1AM Wallet] getUnshieldedBalances warning:", e);
   }
 
   try {
-    const dB = await connectedAPI.getDustBalance();
-    tDust = BigInt(dB.balance ?? 0);
-  } catch {
-    /* fallback 0 */
+    const dustRes = await connectedAPI.getDustBalance();
+    const raw = dustRes?.balance !== undefined ? Number(dustRes.balance) : Number(dustRes);
+    tDust = isNaN(raw) ? 0 : raw / 1_000_000;
+  } catch (e) {
+    console.warn("[1AM Wallet] getDustBalance warning:", e);
   }
 
   // Configuration
