@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, ListChecks, Eye, Shield, Lock, Globe, Zap, Layers, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Plus, ListChecks, Eye, Lock, Globe, Sparkles, Layers, CheckCircle2 } from "lucide-react";
 import { RoleGate } from "@/components/freight/RoleGate";
 import { StatusBadge } from "@/components/freight/StatusBadge";
 import { LiveProtocolLog } from "@/components/freight/LiveProtocolLog";
+import MagicBento from "@/components/ui/MagicBento";
 import { useFreight } from "@/lib/freight-store";
 import { getWalletSession, truncateAddress } from "@/lib/midnight-api";
 
@@ -33,8 +34,11 @@ export const Route = createFileRoute("/shipper")({
 function ShipperDashboard() {
   const { myBatches, wallet } = useFreight();
   const session = getWalletSession();
+  const navigate = useNavigate();
 
-  const count = (status: string) => myBatches.filter((b) => b.status === status).length;
+  // Functional interactive toggle state
+  const [settlementType, setSettlementType] = useState<"batch" | "single">("batch");
+  const [privacyLevel, setPrivacyLevel] = useState<"shielded" | "unshielded">("shielded");
 
   const displayAddress = session?.address || wallet?.address || "";
   const shortAddr = displayAddress ? truncateAddress(displayAddress) : "Shipper Session";
@@ -45,6 +49,17 @@ function ShipperDashboard() {
     day: "numeric",
     year: "numeric",
   });
+
+  const handleSettlementTypeChange = (type: "batch" | "single") => {
+    setSettlementType(type);
+    if (type === "single") {
+      navigate({ to: "/create-batch" });
+    }
+  };
+
+  const handlePrivacyLevelChange = (level: "shielded" | "unshielded") => {
+    setPrivacyLevel(level);
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 relative z-10 space-y-8">
@@ -70,9 +85,9 @@ function ShipperDashboard() {
         </div>
       </header>
 
-      {/* ─── 2. 4 TOP BALANCE & METRIC CARDS (MidRoll style) ────── */}
+      {/* ─── 2. 4 TOP BALANCE & METRIC CARDS ────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Shielded Token Balance (Dark orbit style) */}
+        {/* Card 1: Shielded Token Balance */}
         <div className="relative p-5 rounded-xl bg-gradient-to-br from-[#12181F] via-[#0B121A] to-[#12181F] border border-[#9C8552]/40 backdrop-blur-md shadow-[0_10px_30px_rgba(156,133,82,0.15)] overflow-hidden group hover:scale-[1.02] transition-transform">
           <div className="pointer-events-none absolute right-[-20px] top-[-20px] size-28 rounded-full bg-[#9C8552]/10 blur-xl group-hover:bg-[#9C8552]/20 transition-colors" />
           <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-[#A9A390]">
@@ -126,7 +141,7 @@ function ShipperDashboard() {
         </div>
       </div>
 
-      {/* ─── 3. MAIN CONTENT GRID (MidRoll layout) ───────────────── */}
+      {/* ─── 3. MAIN CONTENT GRID ─────────────────────────────────── */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Console Panel (2 cols) */}
         <div className="lg:col-span-2 space-y-6">
@@ -149,35 +164,90 @@ function ShipperDashboard() {
               </div>
             </div>
 
-            {/* Config Toggles */}
+            {/* REAL FUNCTIONAL CONFIG TOGGLES */}
             <div className="grid gap-4 sm:grid-cols-2">
+              {/* Settlement Type Toggle */}
               <div className="space-y-1.5">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-[#6B7178]">
-                  SETTLEMENT TYPE
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-[#6B7178]">
+                    SETTLEMENT TYPE
+                  </p>
+                  <span className="text-[9px] font-mono text-[#D4AF37]">
+                    Mode: {settlementType === "batch" ? "Multi-Leg" : "Single"}
+                  </span>
+                </div>
                 <div className="flex rounded-md p-1 bg-[#0B121A] border border-[#2A3138]">
-                  <button className="flex-1 py-1.5 text-xs font-medium rounded bg-[#9C8552]/20 text-[#D4AF37] border border-[#9C8552]/40">
+                  <button
+                    type="button"
+                    onClick={() => handleSettlementTypeChange("batch")}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-all cursor-pointer ${
+                      settlementType === "batch"
+                        ? "bg-[#9C8552]/20 text-[#D4AF37] border border-[#9C8552]/50 font-semibold shadow-[0_0_10px_rgba(156,133,82,0.2)]"
+                        : "text-[#8A8478] hover:text-[#EDE9DC]"
+                    }`}
+                  >
                     Multi-Leg Batch
                   </button>
-                  <button className="flex-1 py-1.5 text-xs font-medium text-[#8A8478] hover:text-[#EDE9DC]">
+                  <button
+                    type="button"
+                    onClick={() => handleSettlementTypeChange("single")}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-all cursor-pointer ${
+                      settlementType === "single"
+                        ? "bg-[#9C8552]/20 text-[#D4AF37] border border-[#9C8552]/50 font-semibold shadow-[0_0_10px_rgba(156,133,82,0.2)]"
+                        : "text-[#8A8478] hover:text-[#EDE9DC]"
+                    }`}
+                  >
                     Single Dispatch
                   </button>
                 </div>
               </div>
 
+              {/* Privacy Level Toggle */}
               <div className="space-y-1.5">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-[#6B7178]">
-                  PRIVACY LEVEL (COMPACT)
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-[#6B7178]">
+                    PRIVACY LEVEL (COMPACT)
+                  </p>
+                  <span className="text-[9px] font-mono text-[#34D399]">
+                    {privacyLevel === "shielded" ? "ZK Circuit" : "Unshielded"}
+                  </span>
+                </div>
                 <div className="flex rounded-md p-1 bg-[#0B121A] border border-[#2A3138]">
-                  <button className="flex-1 py-1.5 text-xs font-medium rounded bg-[#55776D]/25 text-[#34D399] border border-[#55776D]/40 flex items-center justify-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handlePrivacyLevelChange("shielded")}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                      privacyLevel === "shielded"
+                        ? "bg-[#55776D]/25 text-[#34D399] border border-[#55776D]/50 font-semibold shadow-[0_0_10px_rgba(52,211,153,0.2)]"
+                        : "text-[#8A8478] hover:text-[#EDE9DC]"
+                    }`}
+                  >
                     <Lock className="size-3" /> Shielded ZK
                   </button>
-                  <button className="flex-1 py-1.5 text-xs font-medium text-[#8A8478] hover:text-[#EDE9DC] flex items-center justify-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handlePrivacyLevelChange("unshielded")}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                      privacyLevel === "unshielded"
+                        ? "bg-[#55776D]/25 text-[#34D399] border border-[#55776D]/50 font-semibold shadow-[0_0_10px_rgba(52,211,153,0.2)]"
+                        : "text-[#8A8478] hover:text-[#EDE9DC]"
+                    }`}
+                  >
                     <Globe className="size-3" /> Unshielded
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Status indicator bar for selected configuration */}
+            <div className="p-3 rounded-lg bg-[#0B121A]/60 border border-[#2A3138] flex items-center justify-between text-xs font-mono text-[#A9A390]">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="size-3.5 text-[#34D399]" />
+                Active Mode: <strong className="text-[#EDE9DC]">{settlementType === "batch" ? "Multi-Leg Batch Escrow" : "Single Leg Direct"}</strong>
+              </span>
+              <span className="text-[10px] text-[#34D399]">
+                Proof: {privacyLevel === "shielded" ? "Compact ZK witness active" : "Unshielded public transaction"}
+              </span>
             </div>
 
             {/* Action Shortcut Buttons */}
@@ -229,7 +299,7 @@ function ShipperDashboard() {
             </div>
           </div>
 
-          {/* Recent Batches List */}
+          {/* Active Batch Overview */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h3
@@ -278,6 +348,33 @@ function ShipperDashboard() {
           <LiveProtocolLog />
         </div>
       </div>
+
+      {/* ─── 4. BENTO SUITE CAPABILITIES SECTION ─────────────────── */}
+      <section className="pt-6 border-t border-[#1B2128]">
+        <div className="mb-6">
+          <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#9C8552]">
+            SECURITY & COMPLIANCE ARCHITECTURE
+          </p>
+          <h2
+            className="text-2xl font-semibold text-[#EDE9DC] mt-1"
+            style={{ fontFamily: "'Fraunces', serif" }}
+          >
+            Zero-Knowledge Settlement Features
+          </h2>
+        </div>
+
+        <MagicBento
+          enableStars={true}
+          enableSpotlight={true}
+          enableBorderGlow={true}
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          spotlightRadius={300}
+          particleCount={10}
+          glowColor="156, 133, 82"
+        />
+      </section>
     </div>
   );
 }

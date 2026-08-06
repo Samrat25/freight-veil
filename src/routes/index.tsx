@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { WalletConnect } from "@/components/freight/WalletConnect";
 import GradientText from "@/components/ui/GradientText";
+import MagicBento from "@/components/ui/MagicBento";
 import { ShieldCheck, Lock, Cpu, CheckCircle2, ArrowUpRight, Sparkles, Terminal, FileCode, Zap, Layers } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -358,9 +359,9 @@ function Landing() {
         </div>
       </section>
 
-      {/* ─── 5. COMPLETE CAPABILITIES ────────────────────── */}
+      {/* ─── 5. COMPLETE CAPABILITIES (MagicBento Grid) ──── */}
       <section className="mx-auto max-w-6xl px-6 py-12">
-        <div className="max-w-3xl">
+        <div className="max-w-3xl mb-8">
           <p
             className="text-[11px] font-medium uppercase tracking-[0.2em] mb-3 text-[#6B7178]"
             style={{ fontFamily: "'IBM Plex Mono', monospace" }}
@@ -375,28 +376,17 @@ function Landing() {
           </h2>
         </div>
 
-        {/* 3x2 Grid Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-10">
-          {capabilities.map((cap) => {
-            const Icon = cap.icon;
-            return (
-              <div
-                key={cap.title}
-                className="group relative p-6 rounded-lg bg-[#12181F]/85 border border-[#1B2128] backdrop-blur-md transition-all duration-300 hover:border-[#55776D]/60 hover:bg-[#12181F] hover:-translate-y-1.5 hover:shadow-[0_10px_30px_rgba(85,119,109,0.15)]"
-              >
-                <div className="p-2.5 rounded-md w-fit bg-[#1B2128] text-[#9C8552] group-hover:bg-[#55776D]/20 group-hover:text-[#34D399] transition-colors mb-4">
-                  <Icon className="size-5" />
-                </div>
-                <h3 className="text-sm font-semibold text-[#EDE9DC] group-hover:text-[#D4AF37] transition-colors">
-                  {cap.title}
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-[#8A8478]">
-                  {cap.desc}
-                </p>
-              </div>
-            );
-          })}
-        </div>
+        <MagicBento
+          enableStars={true}
+          enableSpotlight={true}
+          enableBorderGlow={true}
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          spotlightRadius={320}
+          particleCount={12}
+          glowColor="156, 133, 82"
+        />
       </section>
 
       {/* ─── 6. STAT ROW ─────────────────────────────────── */}

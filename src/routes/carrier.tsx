@@ -1,8 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Send, ListChecks, Eye, Shield, Lock, Globe, FileCheck, Layers } from "lucide-react";
+import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Send, ListChecks, Eye, Lock, Globe, FileCheck, Layers, CheckCircle2 } from "lucide-react";
 import { RoleGate } from "@/components/freight/RoleGate";
 import { StatusBadge } from "@/components/freight/StatusBadge";
 import { LiveProtocolLog } from "@/components/freight/LiveProtocolLog";
+import MagicBento from "@/components/ui/MagicBento";
 import { useFreight } from "@/lib/freight-store";
 import { getWalletSession, truncateAddress } from "@/lib/midnight-api";
 
@@ -32,6 +34,11 @@ export const Route = createFileRoute("/carrier")({
 function CarrierDashboard() {
   const { myClaims, wallet } = useFreight();
   const session = getWalletSession();
+  const navigate = useNavigate();
+
+  // Functional interactive toggle state
+  const [claimType, setClaimType] = useState<"individual" | "multi">("individual");
+  const [privacyLevel, setPrivacyLevel] = useState<"shielded" | "unshielded">("shielded");
 
   const displayAddress = session?.address || wallet?.address || "";
   const shortAddr = displayAddress ? truncateAddress(displayAddress) : "Carrier Session";
@@ -42,6 +49,17 @@ function CarrierDashboard() {
     day: "numeric",
     year: "numeric",
   });
+
+  const handleClaimTypeChange = (type: "individual" | "multi") => {
+    setClaimType(type);
+    if (type === "individual") {
+      navigate({ to: "/submit-claim" });
+    }
+  };
+
+  const handlePrivacyLevelChange = (level: "shielded" | "unshielded") => {
+    setPrivacyLevel(level);
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 relative z-10 space-y-8">
@@ -67,7 +85,7 @@ function CarrierDashboard() {
         </div>
       </header>
 
-      {/* ─── 2. 4 TOP BALANCE & METRIC CARDS (MidRoll style) ────── */}
+      {/* ─── 2. 4 TOP BALANCE & METRIC CARDS ────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Shielded Token Balance */}
         <div className="relative p-5 rounded-xl bg-gradient-to-br from-[#12181F] via-[#0B121A] to-[#12181F] border border-[#55776D]/40 backdrop-blur-md shadow-[0_10px_30px_rgba(85,119,109,0.15)] overflow-hidden group hover:scale-[1.02] transition-transform">
@@ -123,7 +141,7 @@ function CarrierDashboard() {
         </div>
       </div>
 
-      {/* ─── 3. MAIN CONTENT GRID (MidRoll layout) ───────────────── */}
+      {/* ─── 3. MAIN CONTENT GRID ─────────────────────────────────── */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Console Panel (2 cols) */}
         <div className="lg:col-span-2 space-y-6">
@@ -146,35 +164,90 @@ function CarrierDashboard() {
               </div>
             </div>
 
-            {/* Config Toggles */}
+            {/* REAL FUNCTIONAL CONFIG TOGGLES */}
             <div className="grid gap-4 sm:grid-cols-2">
+              {/* Claim Type Toggle */}
               <div className="space-y-1.5">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-[#6B7178]">
-                  CLAIM TYPE
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-[#6B7178]">
+                    CLAIM TYPE
+                  </p>
+                  <span className="text-[9px] font-mono text-[#34D399]">
+                    Mode: {claimType === "individual" ? "Single Leg" : "Multi Roster"}
+                  </span>
+                </div>
                 <div className="flex rounded-md p-1 bg-[#0B121A] border border-[#2A3138]">
-                  <button className="flex-1 py-1.5 text-xs font-medium rounded bg-[#55776D]/25 text-[#34D399] border border-[#55776D]/40">
+                  <button
+                    type="button"
+                    onClick={() => handleClaimTypeChange("individual")}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-all cursor-pointer ${
+                      claimType === "individual"
+                        ? "bg-[#55776D]/25 text-[#34D399] border border-[#55776D]/50 font-semibold shadow-[0_0_10px_rgba(52,211,153,0.2)]"
+                        : "text-[#8A8478] hover:text-[#EDE9DC]"
+                    }`}
+                  >
                     Individual Leg
                   </button>
-                  <button className="flex-1 py-1.5 text-xs font-medium text-[#8A8478] hover:text-[#EDE9DC]">
+                  <button
+                    type="button"
+                    onClick={() => handleClaimTypeChange("multi")}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-all cursor-pointer ${
+                      claimType === "multi"
+                        ? "bg-[#55776D]/25 text-[#34D399] border border-[#55776D]/50 font-semibold shadow-[0_0_10px_rgba(52,211,153,0.2)]"
+                        : "text-[#8A8478] hover:text-[#EDE9DC]"
+                    }`}
+                  >
                     Multi-Route Roster
                   </button>
                 </div>
               </div>
 
+              {/* Privacy Level Toggle */}
               <div className="space-y-1.5">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-[#6B7178]">
-                  PRIVACY LEVEL (COMPACT)
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-[#6B7178]">
+                    PRIVACY LEVEL (COMPACT)
+                  </p>
+                  <span className="text-[9px] font-mono text-[#34D399]">
+                    {privacyLevel === "shielded" ? "ZK Circuit" : "Unshielded"}
+                  </span>
+                </div>
                 <div className="flex rounded-md p-1 bg-[#0B121A] border border-[#2A3138]">
-                  <button className="flex-1 py-1.5 text-xs font-medium rounded bg-[#55776D]/25 text-[#34D399] border border-[#55776D]/40 flex items-center justify-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handlePrivacyLevelChange("shielded")}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                      privacyLevel === "shielded"
+                        ? "bg-[#55776D]/25 text-[#34D399] border border-[#55776D]/50 font-semibold shadow-[0_0_10px_rgba(52,211,153,0.2)]"
+                        : "text-[#8A8478] hover:text-[#EDE9DC]"
+                    }`}
+                  >
                     <Lock className="size-3" /> Shielded ZK
                   </button>
-                  <button className="flex-1 py-1.5 text-xs font-medium text-[#8A8478] hover:text-[#EDE9DC] flex items-center justify-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handlePrivacyLevelChange("unshielded")}
+                    className={`flex-1 py-1.5 text-xs font-medium rounded transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                      privacyLevel === "unshielded"
+                        ? "bg-[#55776D]/25 text-[#34D399] border border-[#55776D]/50 font-semibold shadow-[0_0_10px_rgba(52,211,153,0.2)]"
+                        : "text-[#8A8478] hover:text-[#EDE9DC]"
+                    }`}
+                  >
                     <Globe className="size-3" /> Unshielded
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Status indicator bar for selected configuration */}
+            <div className="p-3 rounded-lg bg-[#0B121A]/60 border border-[#2A3138] flex items-center justify-between text-xs font-mono text-[#A9A390]">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="size-3.5 text-[#34D399]" />
+                Active Mode: <strong className="text-[#EDE9DC]">{claimType === "individual" ? "Individual Leg Prover" : "Multi-Route Roster Prover"}</strong>
+              </span>
+              <span className="text-[10px] text-[#34D399]">
+                Witness: {privacyLevel === "shielded" ? "Compact ZK private rate proof" : "Unshielded public claim"}
+              </span>
             </div>
 
             {/* Action Shortcut Buttons */}
@@ -226,7 +299,7 @@ function CarrierDashboard() {
             </div>
           </div>
 
-          {/* Recent Claims Overview List */}
+          {/* Active Claim Submissions Overview */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h3
@@ -275,6 +348,33 @@ function CarrierDashboard() {
           <LiveProtocolLog />
         </div>
       </div>
+
+      {/* ─── 4. BENTO SUITE CAPABILITIES SECTION ─────────────────── */}
+      <section className="pt-6 border-t border-[#1B2128]">
+        <div className="mb-6">
+          <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#55776D]">
+            CARRIER PRIVACY & PROOF VERIFICATION
+          </p>
+          <h2
+            className="text-2xl font-semibold text-[#EDE9DC] mt-1"
+            style={{ fontFamily: "'Fraunces', serif" }}
+          >
+            Zero-Knowledge Claim Protocol
+          </h2>
+        </div>
+
+        <MagicBento
+          enableStars={true}
+          enableSpotlight={true}
+          enableBorderGlow={true}
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          spotlightRadius={300}
+          particleCount={10}
+          glowColor="85, 119, 109"
+        />
+      </section>
     </div>
   );
 }
