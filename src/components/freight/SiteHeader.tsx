@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { Radar } from "lucide-react";
 import { WalletConnect } from "./WalletConnect";
 import { RoleBadge } from "./RoleBadge";
 import { useFreight } from "@/lib/freight-store";
@@ -28,13 +27,32 @@ export function SiteHeader() {
   const nav = role === "shipper" ? shipperNav : role === "carrier" ? carrierNav : publicNav;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-6">
-        <Link to="/" className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-md bg-primary/15 text-primary">
-            <Radar className="size-4.5" aria-hidden="true" />
+    <header
+      className="sticky top-0 z-40 backdrop-blur-md"
+      style={{
+        backgroundColor: "rgba(11,18,26,0.88)",
+        borderBottom: "1px solid #1B2128",
+      }}
+    >
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-6">
+        <Link to="/" className="flex items-center gap-2.5">
+          <span
+            className="text-sm font-semibold tracking-tight"
+            style={{ fontFamily: "'Fraunces', serif", color: "#EDE9DC" }}
+          >
+            FreightVeil
           </span>
-          <span className="text-sm font-semibold tracking-tight">FreightVeil</span>
+          <span
+            className="rounded-sm px-1.5 py-0.5 text-[9px] font-medium tracking-wider uppercase"
+            style={{
+              fontFamily: "'IBM Plex Mono', monospace",
+              backgroundColor: "#1B2128",
+              color: "#A9A390",
+              border: "1px solid #2A3138",
+            }}
+          >
+            Midnight ZK
+          </span>
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
           {nav.map((item) => (
@@ -42,8 +60,9 @@ export function SiteHeader() {
               key={item.to}
               to={item.to}
               activeOptions={{ exact: item.to === "/" }}
-              activeProps={{ className: "bg-secondary text-foreground" }}
-              className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              activeProps={{ className: "!text-[#EDE9DC]" }}
+              className="rounded-md px-3 py-1.5 text-sm transition-colors hover:text-[#EDE9DC]"
+              style={{ color: "#8A8478" }}
             >
               {item.label}
             </Link>

@@ -135,7 +135,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <FreightProvider>
-        <div className="min-h-screen bg-background relative">
+        <div className="min-h-screen relative">
           <MoltenBackground />
           <div className="relative z-10">
             <SiteHeader />
