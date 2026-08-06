@@ -160,6 +160,45 @@ export async function connect1AMWallet(
   return parseConnectedSession(connectedAPI, networkId, wallet.name || "1AM", wallet.apiVersion);
 }
 
+function extractAddressString(val: unknown): string {
+  if (!val) return "";
+  if (typeof val === "string") return val;
+  if (Array.isArray(val)) {
+    if (val.length === 0) return "";
+    return extractAddressString(val[0]);
+  }
+  if (typeof val === "object" && val !== null) {
+    const obj = val as Record<string, unknown>;
+    if (typeof obj.unshieldedAddress === "string") return obj.unshieldedAddress;
+    if (typeof obj.shieldedAddress === "string") return obj.shieldedAddress;
+    if (typeof obj.dustAddress === "string") return obj.dustAddress;
+    if (typeof obj.address === "string") return obj.address;
+  }
+  return "";
+}
+
+function extractCoinPublicKey(val: unknown): string {
+  if (!val) return "";
+  if (Array.isArray(val) && val.length > 0) return extractCoinPublicKey(val[0]);
+  if (typeof val === "object" && val !== null) {
+    const obj = val as Record<string, unknown>;
+    if (typeof obj.shieldedCoinPublicKey === "string") return obj.shieldedCoinPublicKey;
+    if (typeof obj.coinPublicKey === "string") return obj.coinPublicKey;
+  }
+  return "";
+}
+
+function extractEncryptionPublicKey(val: unknown): string {
+  if (!val) return "";
+  if (Array.isArray(val) && val.length > 0) return extractEncryptionPublicKey(val[0]);
+  if (typeof val === "object" && val !== null) {
+    const obj = val as Record<string, unknown>;
+    if (typeof obj.shieldedEncryptionPublicKey === "string") return obj.shieldedEncryptionPublicKey;
+    if (typeof obj.encryptionPublicKey === "string") return obj.encryptionPublicKey;
+  }
+  return "";
+}
+
 async function parseConnectedSession(
   connectedAPI: Midnight1AMConnectedAPI,
   networkId: MidnightNetwork,
@@ -170,9 +209,9 @@ async function parseConnectedSession(
   let unshieldedAddress = "";
   try {
     const res = await connectedAPI.getUnshieldedAddress();
-    unshieldedAddress = typeof res === "string" ? res : res.unshieldedAddress;
-  } catch {
-    unshieldedAddress = `mn_addr_${networkId}_1am_unshielded`;
+    unshieldedAddress = extractAddressString(res);
+  } catch (e) {
+    console.warn("[1AM Wallet] getUnshieldedAddress error:", e);
   }
 
   let shieldedAddress = "";
@@ -180,23 +219,19 @@ async function parseConnectedSession(
   let encryptionPublicKey = "";
   try {
     const res = await connectedAPI.getShieldedAddresses();
-    if (Array.isArray(res)) {
-      shieldedAddress = res[0] || "";
-    } else {
-      shieldedAddress = res.shieldedAddress || "";
-      coinPublicKey = res.shieldedCoinPublicKey || "";
-      encryptionPublicKey = res.shieldedEncryptionPublicKey || "";
-    }
-  } catch {
-    shieldedAddress = `mn_shield_${networkId}_1am_shielded`;
+    shieldedAddress = extractAddressString(res);
+    coinPublicKey = extractCoinPublicKey(res);
+    encryptionPublicKey = extractEncryptionPublicKey(res);
+  } catch (e) {
+    console.warn("[1AM Wallet] getShieldedAddresses error:", e);
   }
 
   let dustAddress = "";
   try {
     const res = await connectedAPI.getDustAddress();
-    dustAddress = typeof res === "string" ? res : res.dustAddress;
-  } catch {
-    dustAddress = "";
+    dustAddress = extractAddressString(res);
+  } catch (e) {
+    console.warn("[1AM Wallet] getDustAddress error:", e);
   }
 
 function parseBalanceValue(val: unknown): number {

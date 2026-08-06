@@ -184,10 +184,10 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               </p>
               <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2.5 max-w-full">
                 <p className="flex-1 truncate font-mono text-xs text-foreground">
-                  {session?.coinPublicKey ? session.coinPublicKey : wallet.address}
+                  {session?.shieldedAddress || session?.coinPublicKey || wallet.address}
                 </p>
                 <button
-                  onClick={() => handleCopy(session?.coinPublicKey || wallet.address, "key")}
+                  onClick={() => handleCopy(session?.shieldedAddress || session?.coinPublicKey || wallet.address, "key")}
                   className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {copied === "key" ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
