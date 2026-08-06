@@ -4,7 +4,6 @@ import { Plus, ListChecks, Eye, Lock, Globe, Sparkles, Layers, CheckCircle2 } fr
 import { RoleGate } from "@/components/freight/RoleGate";
 import { StatusBadge } from "@/components/freight/StatusBadge";
 import { LiveProtocolLog } from "@/components/freight/LiveProtocolLog";
-import MagicBento from "@/components/ui/MagicBento";
 import { useFreight } from "@/lib/freight-store";
 import { getWalletSession, truncateAddress } from "@/lib/midnight-api";
 
@@ -348,33 +347,6 @@ function ShipperDashboard() {
           <LiveProtocolLog />
         </div>
       </div>
-
-      {/* ─── 4. BENTO SUITE CAPABILITIES SECTION ─────────────────── */}
-      <section className="pt-6 border-t border-[#1B2128]">
-        <div className="mb-6">
-          <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#9C8552]">
-            SECURITY & COMPLIANCE ARCHITECTURE
-          </p>
-          <h2
-            className="text-2xl font-semibold text-[#EDE9DC] mt-1"
-            style={{ fontFamily: "'Fraunces', serif" }}
-          >
-            Zero-Knowledge Settlement Features
-          </h2>
-        </div>
-
-        <MagicBento
-          enableStars={true}
-          enableSpotlight={true}
-          enableBorderGlow={true}
-          enableTilt={true}
-          enableMagnetism={true}
-          clickEffect={true}
-          spotlightRadius={300}
-          particleCount={10}
-          glowColor="156, 133, 82"
-        />
-      </section>
     </div>
   );
 }
