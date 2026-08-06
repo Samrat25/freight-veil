@@ -16,28 +16,10 @@ import { truncateAddress, isLaceInstalled, getDetectedWallets, getWalletSession 
 import type { MidnightNetwork } from "@/lib/lace-wallet";
 import { ONE_AM_INSTALL_URL, MIDNIGHT_FAUCET_URL } from "@/lib/lace-wallet";
 
-function formatTokenBalance(valStr: string, decimals = 6): string {
-  try {
-    const raw = BigInt(valStr);
-    if (raw === 0n) return "0";
-
-    // Standard Midnight token decimal scaling (10^6)
-    const divisor = 10n ** BigInt(decimals);
-    const whole = raw / divisor;
-
-    if (whole >= 1_000_000_000n) {
-      return (Number(whole) / 1_000_000_000).toFixed(2) + "B";
-    }
-    if (whole >= 1_000_000n) {
-      return (Number(whole) / 1_000_000).toFixed(2) + "M";
-    }
-    if (whole >= 1_000n) {
-      return (Number(whole) / 1_000).toFixed(2) + "K";
-    }
-    return Number(whole).toLocaleString();
-  } catch {
-    return valStr;
-  }
+function formatDisplayAmount(val: unknown): string {
+  const num = Number(val);
+  if (isNaN(num) || num <= 0) return "0.00";
+  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function WalletConnect({ size = "default" }: { size?: "default" | "lg" }) {
@@ -161,8 +143,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tNIGHT (Shielded / Unshielded)</p>
                 <p className="mt-1 text-sm font-bold text-foreground truncate font-mono">
-                  {typeof tNightShielded === "number" ? tNightShielded.toFixed(2) : tNightShielded} /{" "}
-                  {typeof tNightUnshielded === "number" ? tNightUnshielded.toFixed(2) : tNightUnshielded}{" "}
+                  {formatDisplayAmount(tNightShielded)} / {formatDisplayAmount(tNightUnshielded)}{" "}
                   <span className="text-xs font-normal text-muted-foreground">tNIGHT</span>
                 </p>
                 <span className="text-[9px] text-muted-foreground block truncate">Midnight Ledger</span>
@@ -170,7 +151,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tDUST Fuel</p>
                 <p className="mt-1 text-sm font-bold text-emerald-400 truncate font-mono">
-                  {typeof tDustFuel === "number" ? tDustFuel.toFixed(2) : tDustFuel}{" "}
+                  {formatDisplayAmount(tDustFuel)}{" "}
                   <span className="text-xs font-normal text-muted-foreground">tDUST</span>
                 </p>
                 <span className="text-[9px] text-emerald-400/80 block truncate">ProofStation Sponsored</span>

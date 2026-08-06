@@ -199,6 +199,20 @@ async function parseConnectedSession(
     dustAddress = "";
   }
 
+function parseBalanceValue(val: unknown): number {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === "object" && val !== null && "balance" in val) {
+    return parseBalanceValue((val as { balance: unknown }).balance);
+  }
+  const num = typeof val === "bigint" ? Number(val) : Number(val);
+  if (isNaN(num) || num <= 0) return 0;
+  // Standard Midnight 10^6 atomic units scaling
+  if (num >= 100_000) {
+    return num / 1_000_000;
+  }
+  return num;
+}
+
   // Fetch balances accurately matching 1AM / Lace DApp connector spec
   let tNightShielded = 0;
   let tNightUnshielded = 0;
@@ -208,8 +222,7 @@ async function parseConnectedSession(
     const sBals = await connectedAPI.getShieldedBalances();
     const vals = Object.values(sBals || {});
     if (vals.length > 0) {
-      const raw = Number(vals[0]);
-      tNightShielded = isNaN(raw) ? 0 : raw / 1_000_000;
+      tNightShielded = parseBalanceValue(vals[0]);
     }
   } catch (e) {
     console.warn("[1AM Wallet] getShieldedBalances warning:", e);
@@ -219,8 +232,7 @@ async function parseConnectedSession(
     const uBals = await connectedAPI.getUnshieldedBalances();
     const vals = Object.values(uBals || {});
     if (vals.length > 0) {
-      const raw = Number(vals[0]);
-      tNightUnshielded = isNaN(raw) ? 0 : raw / 1_000_000;
+      tNightUnshielded = parseBalanceValue(vals[0]);
     }
   } catch (e) {
     console.warn("[1AM Wallet] getUnshieldedBalances warning:", e);
@@ -228,8 +240,7 @@ async function parseConnectedSession(
 
   try {
     const dustRes = await connectedAPI.getDustBalance();
-    const raw = dustRes?.balance !== undefined ? Number(dustRes.balance) : Number(dustRes);
-    tDust = isNaN(raw) ? 0 : raw / 1_000_000;
+    tDust = parseBalanceValue(dustRes);
   } catch (e) {
     console.warn("[1AM Wallet] getDustBalance warning:", e);
   }
