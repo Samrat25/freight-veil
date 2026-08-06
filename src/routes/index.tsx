@@ -1,12 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { EyeOff, Route as RouteIcon, ShieldCheck, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { WalletConnect } from "@/components/freight/WalletConnect";
+import { createFileRoute } from "@tanstack/react-router";
+import { connectWallet } from "@/lib/wallet-placeholder";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "FreightVeil — Confidential Multi-Carrier Settlement" },
+      { title: "FreightVeil — Confidential Multi-Carrier Settlement on Midnight" },
       {
         name: "description",
         content:
@@ -23,99 +21,468 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
+/* ─── Data ──────────────────────────────────────────────── */
+
 const pillars = [
+  { num: "01", title: "Zero-Knowledge Settlement" },
+  { num: "02", title: "Shielded Escrow" },
+  { num: "03", title: "Selective Compliance" },
+];
+
+const workflowSteps = [
   {
-    Icon: ShieldCheck,
-    title: "Funds locked, not disclosed",
-    body: "A shipper commits a total budget as a private witness. The contract proves it covers every leg without publishing a number.",
+    num: "01",
+    title: "Shielded Key Commitment",
+    desc: "Carriers generate a private key commitment locally in 1AM Wallet; no real identities exposed.",
   },
   {
-    Icon: RouteIcon,
-    title: "Per-leg proofs",
-    body: "Each carrier submits distance and agreed rate privately. The contract verifies the contracted rate and releases exactly that payout.",
+    num: "02",
+    title: "Compact ZK Proof",
+    desc: "The shipper dispatches escrow; Compact circuits generate zk-SNARK proofs locally in-browser.",
   },
   {
-    Icon: EyeOff,
-    title: "Nothing leaks sideways",
-    body: "Competitors, other carriers on the same batch, and the public network see only status and carrier count.",
+    num: "03",
+    title: "tDUST Gas Execution",
+    desc: "Transactions run on tDUST ZK fuel while payout amounts stay shielded on-chain.",
+  },
+  {
+    num: "04",
+    title: "Verifiable Ledger",
+    desc: "Midnight verifies the cryptographic proof, updating batch status with full auditability.",
   },
 ];
 
+const capabilities = [
+  {
+    title: "Shielded Escrow",
+    desc: "Shippers lock funds with zero-knowledge proof status; release dispatches privately.",
+  },
+  {
+    title: "Anonymous Disputes",
+    desc: "Batches can be disputed without revealing which party or why, publicly.",
+  },
+  {
+    title: "Nullifier Protection",
+    desc: "Cryptographic guarantee no batch can be settled twice.",
+  },
+  {
+    title: "1AM Wallet Native",
+    desc: "In-browser proving, key commitments, tNIGHT and tDUST handled out of the box.",
+  },
+  {
+    title: "Compact ZK Circuits",
+    desc: "Formal mathematical proof verification directly on-chain.",
+  },
+  {
+    title: "Real-time Protocol Log",
+    desc: "Stream live verification events and track batch status as it happens.",
+  },
+];
+
+const stats = [
+  { value: "< 3s", label: "ZK VERIFICATION" },
+  { value: "100%", label: "PRIVACY PRESERVED" },
+  { value: "0.00", label: "GAS VOLATILITY" },
+  { value: "256-bit", label: "KEY COMMITMENT" },
+];
+
+/* ─── Component ─────────────────────────────────────────── */
+
 function Landing() {
+  const scrollToHowItWorks = (e: React.MouseEvent) => {
+    e.preventDefault();
+    document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
-    <div>
-      <section className="veil-grid relative overflow-hidden border-b border-border">
-        <div className="pointer-events-none absolute inset-x-0 -top-40 h-96 bg-[var(--gradient-veil)] opacity-70 blur-3xl" />
-        <div className="relative mx-auto max-w-6xl px-6 py-24 md:py-32">
-          <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-mono text-xs text-primary">
-            midnight · shielded settlement layer
-          </p>
-          <h1 className="mt-6 max-w-3xl text-5xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
-            <span className="text-gradient-veil">Pay every carrier fairly. Reveal nothing.</span>
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Shippers lock funds for multi-leg shipments; carriers get paid their contracted rate the
-            moment their leg is proven; nobody — not competitors, not other carriers on the same
-            batch, not the public — ever sees individual rates or distances. Settlement runs
-            entirely inside a Midnight smart contract, so the only thing the network publishes is
-            that a batch exists and whether it cleared.
-          </p>
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <WalletConnect size="lg" />
-            <Button asChild variant="outline" size="lg">
-              <Link to="/explorer">
-                See what the public sees
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
+    <div className="min-h-screen" style={{ backgroundColor: "#0B121A", color: "#D8D3C2" }}>
+
+      {/* ─── 1. NAV BAR ──────────────────────────────────── */}
+      <header
+        className="sticky top-0 z-50"
+        style={{ backgroundColor: "#0B121A", borderBottom: "1px solid #1B2128" }}
+      >
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+          <div className="flex items-center gap-2.5">
+            <span
+              className="text-base font-semibold tracking-tight"
+              style={{ fontFamily: "var(--font-display)", color: "#EDE9DC" }}
+            >
+              FreightVeil
+            </span>
+            <span
+              className="rounded-sm px-1.5 py-0.5 text-[10px] font-medium tracking-wider uppercase"
+              style={{
+                fontFamily: "var(--font-mono)",
+                backgroundColor: "#1B2128",
+                color: "#A9A390",
+                border: "1px solid #2A3138",
+              }}
+            >
+              Midnight ZK
+            </span>
           </div>
+          <button
+            onClick={connectWallet}
+            className="cursor-pointer text-sm font-medium px-4 py-1.5 transition-opacity hover:opacity-85"
+            style={{
+              backgroundColor: "#9C8552",
+              color: "#0B121A",
+              borderRadius: "3px",
+            }}
+          >
+            Connect Wallet
+          </button>
+        </div>
+      </header>
+
+      {/* ─── 2. HERO ─────────────────────────────────────── */}
+      <section className="mx-auto max-w-4xl px-6 py-16 md:py-20 text-center">
+        {/* Eyebrow */}
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <span
+            className="inline-block size-1.5 rounded-full"
+            style={{ backgroundColor: "#55776D" }}
+          />
+          <span
+            className="text-[11px] font-medium uppercase tracking-[0.18em]"
+            style={{ fontFamily: "var(--font-mono)", color: "#9C8552" }}
+          >
+            Zero-Knowledge Freight Ledger
+          </span>
+        </div>
+
+        <h1
+          className="text-4xl md:text-5xl font-medium leading-tight"
+          style={{ fontFamily: "var(--font-display)", color: "#EDE9DC" }}
+        >
+          Trust Through Transit.
+        </h1>
+
+        <p
+          className="mx-auto mt-5 max-w-2xl text-base md:text-lg leading-relaxed"
+          style={{ color: "#A9A390" }}
+        >
+          Confidential multi-carrier settlement, shielded escrow, and provable payout
+          compliance — built on Midnight's zero-knowledge smart contract infrastructure.
+        </p>
+
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <button
+            onClick={connectWallet}
+            className="cursor-pointer text-sm font-medium px-6 py-2.5 transition-opacity hover:opacity-85"
+            style={{
+              backgroundColor: "#9C8552",
+              color: "#0B121A",
+              borderRadius: "3px",
+            }}
+          >
+            Connect Wallet to Launch
+          </button>
+          <a
+            href="#how-it-works"
+            onClick={scrollToHowItWorks}
+            className="text-sm underline underline-offset-4 transition-opacity hover:opacity-80"
+            style={{ fontFamily: "var(--font-mono)", color: "#A9A390" }}
+          >
+            How It Works
+          </a>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <div className="grid gap-5 md:grid-cols-3">
-          {pillars.map(({ Icon, title, body }) => (
-            <article key={title} className="veil-panel p-6">
-              <span className="flex size-10 items-center justify-center rounded-md bg-primary/12 text-primary">
-                <Icon className="size-5" aria-hidden="true" />
+      {/* ─── 3. WHAT FREIGHTVEIL DOES ────────────────────── */}
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <div className="max-w-3xl">
+          <p
+            className="text-[11px] font-medium uppercase tracking-[0.18em] mb-4"
+            style={{ fontFamily: "var(--font-mono)", color: "#6B7178" }}
+          >
+            What FreightVeil Does
+          </p>
+          <h2
+            className="text-2xl md:text-3xl font-medium leading-snug"
+            style={{ fontFamily: "var(--font-display)", color: "#EDE9DC" }}
+          >
+            Settlement that builds trust & preserves privacy
+          </h2>
+          <p className="mt-4 text-sm leading-relaxed" style={{ color: "#A9A390" }}>
+            FreightVeil decouples private settlement execution from public audit verification
+            — shippers dispatch batch payouts while carrier rates and distances stay completely private.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 mt-10">
+          {pillars.map((p) => (
+            <div
+              key={p.num}
+              className="py-5 px-1"
+              style={{ borderTop: "1px solid #2A3138" }}
+            >
+              <span
+                className="text-xs font-medium"
+                style={{ fontFamily: "var(--font-mono)", color: "#6B7178" }}
+              >
+                {p.num}
               </span>
-              <h2 className="mt-5 text-base font-semibold">{title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
-            </article>
+              <p
+                className="mt-1.5 text-sm font-medium"
+                style={{ color: "#EDE9DC" }}
+              >
+                {p.title}
+              </p>
+            </div>
           ))}
         </div>
+      </section>
 
-        <div className="veil-panel mt-14 grid gap-8 p-8 md:grid-cols-2">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">Two consoles, one shielded batch</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Shippers open batches and trigger settlement. Carriers file leg claims and see a
-              payout confirmation — never an amount belonging to anyone else.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button asChild>
-                <Link to="/shipper">Shipper dashboard</Link>
-              </Button>
-              <Button asChild variant="secondary">
-                <Link to="/carrier">Carrier dashboard</Link>
-              </Button>
+      {/* ─── 4. ARCHITECTURE & WORKFLOW ──────────────────── */}
+      <section id="how-it-works" className="mx-auto max-w-6xl px-6 py-16 scroll-mt-16">
+        <div className="max-w-3xl">
+          <p
+            className="text-[11px] font-medium uppercase tracking-[0.18em] mb-4"
+            style={{ fontFamily: "var(--font-mono)", color: "#6B7178" }}
+          >
+            Architecture & Workflow
+          </p>
+          <h2
+            className="text-2xl md:text-3xl font-medium leading-snug"
+            style={{ fontFamily: "var(--font-display)", color: "#EDE9DC" }}
+          >
+            How FreightVeil Operates on Midnight
+          </h2>
+          <p className="mt-4 text-sm leading-relaxed" style={{ color: "#A9A390" }}>
+            Dual-state contracts compiled from Compact; FreightVeil uses zero-knowledge proofs
+            to run settlement dispatches on-chain without revealing rate or distance data.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-10">
+          {workflowSteps.map((step) => (
+            <div
+              key={step.num}
+              className="p-5"
+              style={{
+                backgroundColor: "#12181F",
+                border: "1px solid #1B2128",
+                borderRadius: "6px",
+              }}
+            >
+              <span
+                className="text-2xl font-medium"
+                style={{ fontFamily: "var(--font-display)", color: "#9C8552" }}
+              >
+                {step.num}
+              </span>
+              <h3
+                className="mt-3 text-sm font-semibold"
+                style={{ color: "#EDE9DC" }}
+              >
+                {step.title}
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed" style={{ color: "#8A8478" }}>
+                {step.desc}
+              </p>
             </div>
-          </div>
-          <dl className="grid grid-cols-2 gap-4 self-center">
-            {[
-              ["Public fields", "4"],
-              ["Disclosed rates", "0"],
-              ["Proof per leg", "1"],
-              ["Settlement", "On-chain"],
-            ].map(([k, v]) => (
-              <div key={k} className="rounded-md border border-border bg-muted/25 px-4 py-3">
-                <dt className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{k}</dt>
-                <dd className="mt-1 font-mono text-xl text-primary">{v}</dd>
-              </div>
-            ))}
-          </dl>
+          ))}
         </div>
       </section>
+
+      {/* ─── 5. SETTLEMENT DISTRIBUTION LEDGER ───────────── */}
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <div className="max-w-3xl">
+          <p
+            className="text-[11px] font-medium uppercase tracking-[0.18em] mb-4"
+            style={{ fontFamily: "var(--font-mono)", color: "#6B7178" }}
+          >
+            Settlement Distribution Ledger
+          </p>
+          <h2
+            className="text-2xl md:text-3xl font-medium leading-snug"
+            style={{ fontFamily: "var(--font-display)", color: "#EDE9DC" }}
+          >
+            Confidential Escrow & Carrier Payouts
+          </h2>
+          <p className="mt-4 text-sm leading-relaxed" style={{ color: "#A9A390" }}>
+            Traditional blockchain payments leak carrier rates and shipper budgets;
+            FreightVeil protects operations with native Midnight privacy.
+          </p>
+        </div>
+
+        <div
+          className="mt-10"
+          style={{
+            backgroundColor: "#12181F",
+            border: "1px solid #1B2128",
+            borderRadius: "6px",
+          }}
+        >
+          {/* Header */}
+          <div
+            className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-3.5 gap-2"
+            style={{ borderBottom: "1px dashed #2A3138" }}
+          >
+            <span
+              className="text-xs"
+              style={{ fontFamily: "var(--font-mono)", color: "#6B7178" }}
+            >
+              compact_circuit: settle_batch
+            </span>
+            <span className="flex items-center gap-1.5 text-xs" style={{ color: "#55776D" }}>
+              <span
+                className="inline-block size-1.5 rounded-full"
+                style={{ backgroundColor: "#55776D" }}
+              />
+              ZKP Active
+            </span>
+          </div>
+
+          {/* Rows */}
+          {[
+            { label: "Shielded Carriers", value: "14 Carriers" },
+            { label: "Total Freight Settled", value: "250,000 tNIGHT" },
+            { label: "Public Visibility", value: "0% (Fully Shielded)" },
+          ].map((row, i) => (
+            <div
+              key={row.label}
+              className="flex items-center justify-between px-5 py-3"
+              style={{
+                borderBottom: i < 2 ? "1px solid #1B2128" : "none",
+              }}
+            >
+              <span className="text-xs" style={{ color: "#6B7178" }}>
+                {row.label}
+              </span>
+              <span
+                className="text-sm font-medium"
+                style={{ fontFamily: "var(--font-mono)", color: "#EDE9DC" }}
+              >
+                {row.value}
+              </span>
+            </div>
+          ))}
+
+          {/* Footnote */}
+          <div
+            className="px-5 py-3 text-xs leading-relaxed"
+            style={{ borderTop: "1px dashed #2A3138", color: "#8A8478" }}
+          >
+            💡 Carriers receive funds instantly into their 1AM Wallet key commitments without
+            public block explorers indexing rates.
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 6. COMPLETE CAPABILITIES ────────────────────── */}
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <div className="max-w-3xl">
+          <p
+            className="text-[11px] font-medium uppercase tracking-[0.18em] mb-4"
+            style={{ fontFamily: "var(--font-mono)", color: "#6B7178" }}
+          >
+            Complete Capabilities
+          </p>
+          <h2
+            className="text-2xl md:text-3xl font-medium leading-snug"
+            style={{ fontFamily: "var(--font-display)", color: "#EDE9DC" }}
+          >
+            Enterprise Suite Built for Midnight
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-10">
+          {capabilities.map((cap) => (
+            <div
+              key={cap.title}
+              className="p-5"
+              style={{
+                backgroundColor: "#12181F",
+                border: "1px solid #1B2128",
+                borderRadius: "6px",
+              }}
+            >
+              <h3
+                className="text-sm font-semibold"
+                style={{ color: "#EDE9DC" }}
+              >
+                {cap.title}
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed" style={{ color: "#8A8478" }}>
+                {cap.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── 7. STAT ROW ─────────────────────────────────── */}
+      <section
+        className="mx-auto max-w-6xl px-6"
+        style={{ borderTop: "1px solid #1B2128", borderBottom: "1px solid #1B2128" }}
+      >
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 py-10">
+          {stats.map((s) => (
+            <div key={s.label} className="text-center">
+              <span
+                className="text-2xl md:text-3xl font-medium"
+                style={{ fontFamily: "var(--font-display)", color: "#9C8552" }}
+              >
+                {s.value}
+              </span>
+              <p
+                className="mt-1 text-[10px] uppercase tracking-[0.16em]"
+                style={{ fontFamily: "var(--font-mono)", color: "#6B7178" }}
+              >
+                {s.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── 8. FINAL CTA ────────────────────────────────── */}
+      <section className="mx-auto max-w-3xl px-6 py-20 text-center">
+        <h2
+          className="text-2xl md:text-3xl font-medium"
+          style={{ fontFamily: "var(--font-display)", color: "#EDE9DC" }}
+        >
+          Ready to Settle With Confidence?
+        </h2>
+        <p className="mt-4 text-sm leading-relaxed" style={{ color: "#A9A390" }}>
+          Connect your Midnight wallet to launch the FreightVeil dispatch portal.
+        </p>
+        <button
+          onClick={connectWallet}
+          className="mt-6 cursor-pointer text-sm font-medium px-6 py-2.5 transition-opacity hover:opacity-85"
+          style={{
+            backgroundColor: "#9C8552",
+            color: "#0B121A",
+            borderRadius: "3px",
+          }}
+        >
+          Connect Wallet
+        </button>
+      </section>
+
+      {/* ─── 9. FOOTER ───────────────────────────────────── */}
+      <footer
+        className="py-5 px-6"
+        style={{ borderTop: "1px solid #1B2128" }}
+      >
+        <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span
+            className="text-[11px]"
+            style={{ fontFamily: "var(--font-mono)", color: "#6B7178" }}
+          >
+            FreightVeil © 2026 Midnight ZK Protocol
+          </span>
+          <span
+            className="text-[11px]"
+            style={{ fontFamily: "var(--font-mono)", color: "#6B7178" }}
+          >
+            Powered by Midnight Blockchain · Compact ZK Smart Contracts
+          </span>
+        </div>
+      </footer>
     </div>
   );
 }
