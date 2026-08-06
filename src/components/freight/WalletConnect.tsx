@@ -16,10 +16,19 @@ import { truncateAddress, isLaceInstalled, getDetectedWallets, getWalletSession 
 import type { MidnightNetwork } from "@/lib/lace-wallet";
 import { ONE_AM_INSTALL_URL, MIDNIGHT_FAUCET_URL } from "@/lib/lace-wallet";
 
+/** Safely scale raw balance → human-readable. If raw ≥ 1000 it's atomic (÷10^6). */
+function scaleBalance(raw: number): number {
+  if (isNaN(raw) || raw <= 0) return 0;
+  if (raw >= 1_000) return raw / 1_000_000;
+  return raw;
+}
+
 function formatDisplayAmount(val: unknown): string {
   const num = Number(val);
   if (isNaN(num) || num <= 0) return "0.00";
-  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
+  if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
+  return num.toFixed(2);
 }
 
 export function WalletConnect({ size = "default" }: { size?: "default" | "lg" }) {
@@ -64,18 +73,14 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
         if (typeof api.getDustBalance === "function") {
           const dustRes = await api.getDustBalance();
           const raw = dustRes?.balance !== undefined ? Number(dustRes.balance) : Number(dustRes);
-          if (!isNaN(raw)) {
-            setLiveDust(raw >= 100_000 ? raw / 1_000_000 : raw);
-          }
+          if (!isNaN(raw)) setLiveDust(scaleBalance(raw));
         }
         if (typeof api.getUnshieldedBalances === "function") {
           const uBals = await api.getUnshieldedBalances();
           const vals = Object.values(uBals || {});
           if (vals.length > 0) {
             const raw = Number(vals[0]);
-            if (!isNaN(raw)) {
-              setLiveUnshielded(raw >= 100_000 ? raw / 1_000_000 : raw);
-            }
+            if (!isNaN(raw)) setLiveUnshielded(scaleBalance(raw));
           }
         }
         if (typeof api.getShieldedBalances === "function") {
@@ -83,9 +88,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
           const vals = Object.values(sBals || {});
           if (vals.length > 0) {
             const raw = Number(vals[0]);
-            if (!isNaN(raw)) {
-              setLiveShielded(raw >= 100_000 ? raw / 1_000_000 : raw);
-            }
+            if (!isNaN(raw)) setLiveShielded(scaleBalance(raw));
           }
         }
       } catch (err) {
@@ -99,14 +102,14 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
   }, [wallet]);
 
   const displayDust = liveDust ?? session?.balances?.tDust ?? 0;
-  const displayUnshielded = liveUnshielded ?? session?.balances?.tNightUnshielded ?? 0;
-  const displayShielded = liveShielded ?? session?.balances?.tNightShielded ?? 0;
+  const displayUnshieldedBal = liveUnshielded ?? session?.balances?.tNightUnshielded ?? 0;
+  const displayShieldedBal = liveShielded ?? session?.balances?.tNightShielded ?? 0;
 
   const displayUnshieldedAddress =
-    session?.address || wallet?.address || `mn_addr_${selectedNetwork}1w88tm9krmywaecx2th3agkjzu7uu4a420euh8yum3nm42p84n8q70vdqw`;
+    session?.address || wallet?.address || "";
 
   const displayShieldedAddress =
-    session?.shieldedAddress || session?.coinPublicKey || `mn_shield-cpk_${selectedNetwork}1xypgstqfj73qanw5d0jqcy93yd2fhp2kc8nudzd64pqgm7qznxqpya16k`;
+    session?.shieldedAddress || session?.coinPublicKey || "";
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
@@ -131,7 +134,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
           id="wallet-connect-button"
         >
           <Wallet className="size-4" aria-hidden="true" />
-          {wallet ? truncateAddress(displayUnshieldedAddress) : "Connect 1AM Wallet"}
+          {wallet ? truncateAddress(displayUnshieldedAddress || wallet.address) : "Connect 1AM Wallet"}
           {wallet && role ? (
             <span className="ml-1" aria-label={`Role: ${role}`}>
               {role === "shipper" ? "🚢" : "🚚"}
@@ -140,14 +143,14 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-xl max-w-[95vw] overflow-hidden p-6">
+      <DialogContent className="sm:max-w-md max-w-[92vw] overflow-hidden p-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Wallet className="size-5 text-primary shrink-0" />
             1AM Wallet
           </DialogTitle>
-          <DialogDescription className="uppercase tracking-widest text-[10px] text-muted-foreground flex items-center gap-1">
-            Midnight Network · Real Extension Signing & ProofStation
+          <DialogDescription className="uppercase tracking-widest text-[10px] text-muted-foreground">
+            Midnight Network · Real Extension Signing
           </DialogDescription>
         </DialogHeader>
 
@@ -155,24 +158,26 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
           <RoleSelect onSelected={() => setOpen(false)} />
         ) : wallet ? (
           /* ── Connected State ── */
-          <div className="space-y-4 max-w-full">
+          <div className="space-y-3 w-full min-w-0 overflow-hidden">
             {/* Status badges */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Extension Active</span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Active</span>
               </div>
-              <span className="flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-emerald-400 shrink-0">
-                <Zap className="size-3" />
+              <span className="flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-emerald-400 shrink-0">
+                <Zap className="size-2.5" />
                 Real Signing
               </span>
             </div>
 
             {/* Unshielded Address */}
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Unshielded Address</p>
-              <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2.5 max-w-full">
-                <p className="flex-1 truncate font-mono text-xs text-foreground">{displayUnshieldedAddress}</p>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 py-2 min-w-0">
+                <p className="flex-1 min-w-0 truncate font-mono text-[11px] text-foreground">
+                  {displayUnshieldedAddress || "—"}
+                </p>
                 <button
                   onClick={() => handleCopy(displayUnshieldedAddress, "address")}
                   className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
@@ -183,14 +188,14 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             </div>
 
             {/* Shielded Key Commitment */}
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                <Shield className="size-3" />
+                <Shield className="size-3 shrink-0" />
                 Shielded Key Commitment
               </p>
-              <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2.5 max-w-full">
-                <p className="flex-1 truncate font-mono text-xs text-foreground">
-                  {displayShieldedAddress}
+              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 py-2 min-w-0">
+                <p className="flex-1 min-w-0 truncate font-mono text-[11px] text-foreground">
+                  {displayShieldedAddress || "—"}
                 </p>
                 <button
                   onClick={() => handleCopy(displayShieldedAddress, "key")}
@@ -202,37 +207,37 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             </div>
 
             {/* Balance cards */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tNIGHT (Shielded / Unshielded)</p>
-                <p className="mt-1 text-sm font-bold text-foreground truncate font-mono">
-                  {formatDisplayAmount(displayShielded)} / {formatDisplayAmount(displayUnshielded)}{" "}
-                  <span className="text-xs font-normal text-muted-foreground">tNIGHT</span>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-md border border-border p-2.5 bg-card min-w-0 overflow-hidden">
+                <p className="text-[9px] uppercase tracking-widest text-muted-foreground truncate">tNIGHT</p>
+                <p className="mt-0.5 text-xs font-bold text-foreground truncate font-mono">
+                  {formatDisplayAmount(displayShieldedBal)} <span className="text-[10px] font-normal text-muted-foreground">shielded</span>
                 </p>
-                <span className="text-[9px] text-muted-foreground block truncate">Midnight Ledger</span>
+                <p className="text-xs font-bold text-foreground truncate font-mono">
+                  {formatDisplayAmount(displayUnshieldedBal)} <span className="text-[10px] font-normal text-muted-foreground">unshielded</span>
+                </p>
               </div>
-              <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tDUST Fuel</p>
-                <p className="mt-1 text-sm font-bold text-emerald-400 truncate font-mono">
-                  {formatDisplayAmount(displayDust)}{" "}
-                  <span className="text-xs font-normal text-muted-foreground">tDUST</span>
+              <div className="rounded-md border border-border p-2.5 bg-card min-w-0 overflow-hidden">
+                <p className="text-[9px] uppercase tracking-widest text-muted-foreground truncate">tDUST Fuel</p>
+                <p className="mt-0.5 text-sm font-bold text-emerald-400 truncate font-mono">
+                  {formatDisplayAmount(displayDust)}
                 </p>
-                <span className="text-[9px] text-emerald-400/80 block truncate">ProofStation Sponsored</span>
+                <span className="text-[9px] text-emerald-400/70 block truncate">ProofStation</span>
               </div>
             </div>
 
             {/* Network Selector */}
-            <div className="rounded-md border border-border p-3">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1 mb-2">
-                <Globe className="size-3" />
-                Target Midnight Network
+            <div className="rounded-md border border-border p-2.5">
+              <p className="text-[9px] uppercase tracking-widest text-muted-foreground flex items-center gap-1 mb-1.5">
+                <Globe className="size-3 shrink-0" />
+                Network
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-1.5">
                 {(["preview", "preprod", "undeployed"] as MidnightNetwork[]).map((net) => (
                   <button
                     key={net}
                     onClick={() => handleNetworkSwitch(net)}
-                    className={`rounded-md border px-2.5 py-1.5 text-xs font-medium capitalize transition-colors ${
+                    className={`rounded border px-2 py-1 text-[11px] font-medium capitalize transition-colors ${
                       selectedNetwork === net
                         ? "border-primary bg-primary/10 text-primary font-bold"
                         : "border-border text-muted-foreground hover:border-primary/50"
@@ -257,10 +262,10 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               href={MIDNIGHT_FAUCET_URL}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary hover:bg-primary/20 transition-colors"
+              className="flex items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary hover:bg-primary/20 transition-colors w-full"
             >
               Get Testnet Tokens (Faucet)
-              <ExternalLink className="size-3" />
+              <ExternalLink className="size-3 shrink-0" />
             </a>
 
             {/* Disconnect button */}
@@ -278,7 +283,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
           </div>
         ) : (
           /* ── Not Connected ── */
-          <div className="space-y-3 max-w-full">
+          <div className="space-y-3 w-full min-w-0">
             <button
               type="button"
               disabled={connecting}
@@ -310,8 +315,8 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             {/* Network pre-selector before connecting */}
             <div className="rounded-md border border-border p-3">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1 mb-2">
-                <Globe className="size-3" />
-                Select Network Before Connecting
+                <Globe className="size-3 shrink-0" />
+                Select Network
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {(["preview", "preprod", "undeployed"] as MidnightNetwork[]).map((net) => (
@@ -335,7 +340,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-400">
                 <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                 <span>
-                  No Midnight wallet extension detected.{" "}
+                  No wallet extension detected.{" "}
                   <a
                     href={ONE_AM_INSTALL_URL}
                     target="_blank"
@@ -343,18 +348,17 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
                     className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-amber-300"
                     id="install-1am-link"
                   >
-                    Install 1AM Wallet
+                    Install 1AM
                     <ExternalLink className="size-3" />
-                  </a>{" "}
-                  for zero-dust Midnight transactions.
+                  </a>
                 </span>
               </div>
             )}
 
             <p className="text-xs text-muted-foreground">
               {walletDetected
-                ? "Clicking connect opens your browser extension popup to authorize the session."
-                : "Without a Midnight extension installed, the app operates in local dev mode."}
+                ? "Clicking connect opens your browser extension popup."
+                : "Without an extension, the app operates in local dev mode."}
             </p>
           </div>
         )}

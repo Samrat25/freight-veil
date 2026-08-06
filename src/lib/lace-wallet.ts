@@ -187,8 +187,8 @@ function parseBalanceValue(val: unknown): number {
   }
   const num = typeof val === "bigint" ? Number(val) : Number(val);
   if (isNaN(num) || num <= 0) return 0;
-  // Standard Midnight 10^6 atomic units scaling
-  if (num >= 100_000) {
+  // If value ≥ 1000 it's almost certainly raw atomic units (1 tDUST = 10^6 units)
+  if (num >= 1_000) {
     return num / 1_000_000;
   }
   return num;
