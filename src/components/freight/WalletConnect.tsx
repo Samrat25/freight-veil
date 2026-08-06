@@ -30,10 +30,11 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
   const [detectedWallets, setDetectedWallets] = useState<string[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState<MidnightNetwork>("preview");
 
+  const [liveDust, setLiveDust] = useState<number | null>(null);
+  const [liveUnshielded, setLiveUnshielded] = useState<number | null>(null);
+  const [liveShielded, setLiveShielded] = useState<number | null>(null);
+
   const session = getWalletSession();
-  const tNightShielded = session?.balances?.tNightShielded?.toString() ?? "0";
-  const tNightUnshielded = session?.balances?.tNightUnshielded?.toString() ?? "0";
-  const tDustFuel = session?.balances?.tDust?.toString() ?? "0";
 
   useEffect(() => {
     const check = () => {
@@ -44,6 +45,62 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
     const timer = setTimeout(check, 500);
     return () => clearTimeout(timer);
   }, []);
+
+  // Live balance polling directly from connected 1AM wallet API
+  useEffect(() => {
+    if (!wallet) {
+      setLiveDust(null);
+      setLiveUnshielded(null);
+      setLiveShielded(null);
+      return;
+    }
+
+    const fetchLiveBalances = async () => {
+      const liveSession = getWalletSession();
+      if (!liveSession?.api) return;
+      const api = liveSession.api as Record<string, Function>;
+
+      try {
+        if (typeof api.getDustBalance === "function") {
+          const dustRes = await api.getDustBalance();
+          const raw = dustRes?.balance !== undefined ? Number(dustRes.balance) : Number(dustRes);
+          if (!isNaN(raw)) {
+            setLiveDust(raw >= 100_000 ? raw / 1_000_000 : raw);
+          }
+        }
+        if (typeof api.getUnshieldedBalances === "function") {
+          const uBals = await api.getUnshieldedBalances();
+          const vals = Object.values(uBals || {});
+          if (vals.length > 0) {
+            const raw = Number(vals[0]);
+            if (!isNaN(raw)) {
+              setLiveUnshielded(raw >= 100_000 ? raw / 1_000_000 : raw);
+            }
+          }
+        }
+        if (typeof api.getShieldedBalances === "function") {
+          const sBals = await api.getShieldedBalances();
+          const vals = Object.values(sBals || {});
+          if (vals.length > 0) {
+            const raw = Number(vals[0]);
+            if (!isNaN(raw)) {
+              setLiveShielded(raw >= 100_000 ? raw / 1_000_000 : raw);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[FreightVeil] Live balance refresh warning:", err);
+      }
+    };
+
+    fetchLiveBalances();
+    const interval = setInterval(fetchLiveBalances, 2000);
+    return () => clearInterval(interval);
+  }, [wallet]);
+
+  const displayDust = liveDust ?? session?.balances?.tDust ?? 0;
+  const displayUnshielded = liveUnshielded ?? session?.balances?.tNightUnshielded ?? 0;
+  const displayShielded = liveShielded ?? session?.balances?.tNightShielded ?? 0;
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
@@ -143,7 +200,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tNIGHT (Shielded / Unshielded)</p>
                 <p className="mt-1 text-sm font-bold text-foreground truncate font-mono">
-                  {formatDisplayAmount(tNightShielded)} / {formatDisplayAmount(tNightUnshielded)}{" "}
+                  {formatDisplayAmount(displayShielded)} / {formatDisplayAmount(displayUnshielded)}{" "}
                   <span className="text-xs font-normal text-muted-foreground">tNIGHT</span>
                 </p>
                 <span className="text-[9px] text-muted-foreground block truncate">Midnight Ledger</span>
@@ -151,7 +208,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               <div className="rounded-md border border-border p-3 bg-card overflow-hidden">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">tDUST Fuel</p>
                 <p className="mt-1 text-sm font-bold text-emerald-400 truncate font-mono">
-                  {formatDisplayAmount(tDustFuel)}{" "}
+                  {formatDisplayAmount(displayDust)}{" "}
                   <span className="text-xs font-normal text-muted-foreground">tDUST</span>
                 </p>
                 <span className="text-[9px] text-emerald-400/80 block truncate">ProofStation Sponsored</span>
