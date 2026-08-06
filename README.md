@@ -4,9 +4,10 @@
 
 ---
 
-## 🚀 Live Demo & Repository
+## 🚀 Live Demo & Links
 
 - **Live Application**: [https://freight-veil.vercel.app](https://freight-veil.vercel.app)
+- **Demo Video**: [https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing)
 - **GitHub Repository**: [https://github.com/Samrat25/freight-veil](https://github.com/Samrat25/freight-veil)
 
 ---
@@ -123,6 +124,12 @@ Open **`http://localhost:8080`** in your browser.
 
 ---
 
+## 🎥 Demo Video
+
+- **Video Walkthrough Link**: [Watch Demo Video on Google Drive](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing)
+
+---
+
 ## 📋 Level 2 Submission Checklist
 
 - [x] **1AM / Lace wallet connect and disconnect working**
@@ -130,6 +137,7 @@ Open **`http://localhost:8080`** in your browser.
 - [x] **Observable privacy behavior**: Private inputs (rates, distances, budgets) stay strictly local
 - [x] **Contract address in README.md** (`0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4`)
 - [x] **Live demo link in README.md** (`https://freight-veil.vercel.app`)
+- [x] **Demo video link in README.md** (`https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing`)
 - [x] **Privacy Claim section in README.md**
 - [x] **Minimum 8+ passing tests** in Vitest (`tests/freightveil.test.ts`)
 - [x] **Supabase RLS & Multi-Tenant Company Isolation** (`supabase/migrations/`)
