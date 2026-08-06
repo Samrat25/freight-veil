@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { FreightProvider } from "../lib/freight-store";
 import { SiteHeader } from "../components/freight/SiteHeader";
+import { MoltenBackground } from "../components/freight/MoltenBackground";
 
 function NotFoundComponent() {
   return (
@@ -134,10 +135,13 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <FreightProvider>
-        <div className="min-h-screen bg-background">
-          <SiteHeader />
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
+        <div className="min-h-screen bg-background relative">
+          <MoltenBackground />
+          <div className="relative z-10">
+            <SiteHeader />
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+          </div>
         </div>
       </FreightProvider>
     </QueryClientProvider>
