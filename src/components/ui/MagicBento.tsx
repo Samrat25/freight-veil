@@ -2,9 +2,9 @@ import { useRef, useEffect, useCallback, useState, type ReactNode } from 'react'
 import { gsap } from 'gsap';
 import './MagicBento.css';
 
-const DEFAULT_PARTICLE_COUNT = 12;
-const DEFAULT_SPOTLIGHT_RADIUS = 300;
-const DEFAULT_GLOW_COLOR = '156, 133, 82';
+const DEFAULT_PARTICLE_COUNT = 14;
+const DEFAULT_SPOTLIGHT_RADIUS = 350;
+const DEFAULT_GLOW_COLOR = '212, 175, 55';
 const MOBILE_BREAKPOINT = 768;
 
 export interface BentoCardItem {
@@ -17,37 +17,37 @@ export interface BentoCardItem {
 
 const DEFAULT_CARD_DATA: BentoCardItem[] = [
   {
-    color: '#12181F',
+    color: 'rgba(27, 33, 40, 0.95)',
     title: 'Shielded ZK Escrow',
     description: 'Shippers lock freight funds with zero-knowledge proof status; dispatches release privately on Midnight.',
     label: 'Shielded Witness'
   },
   {
-    color: '#12181F',
+    color: 'rgba(27, 33, 40, 0.95)',
     title: 'Anonymous Disputes',
-    description: 'Batches can be disputed directly on-chain without exposing private operational rates or identities.',
+    description: 'Batches can be disputed directly on-chain without exposing private operational rates or carrier identities.',
     label: 'Compact Circuits'
   },
   {
-    color: '#12181F',
+    color: 'rgba(27, 33, 40, 0.95)',
     title: 'Nullifier Double-Settle Protection',
     description: 'Cryptographic nullifiers guarantee no shipment leg can be claimed or settled more than once.',
     label: 'ZKP Cryptography'
   },
   {
-    color: '#12181F',
+    color: 'rgba(27, 33, 40, 0.95)',
     title: '1AM Wallet Native Integration',
     description: 'In-browser proving, shielded key commitments, tNIGHT and tDUST handled out of the box.',
     label: 'Real Extension'
   },
   {
-    color: '#12181F',
+    color: 'rgba(27, 33, 40, 0.95)',
     title: 'Compact Mathematical Proofs',
     description: 'Formal zero-knowledge circuit validation guarantees contracted rates stay private on ledger.',
     label: 'ProofStation Prover'
   },
   {
-    color: '#12181F',
+    color: 'rgba(27, 33, 40, 0.95)',
     title: 'Real-Time Protocol Log',
     description: 'Stream live verification events and audit batch status execution as it happens on testnet.',
     label: 'Midnight Indexer'
@@ -59,11 +59,11 @@ const createParticleElement = (x: number, y: number, color = DEFAULT_GLOW_COLOR)
   el.className = 'particle';
   el.style.cssText = `
     position: absolute;
-    width: 4px;
-    height: 4px;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
     background: rgba(${color}, 1);
-    box-shadow: 0 0 6px rgba(${color}, 0.6);
+    box-shadow: 0 0 10px rgba(${color}, 0.9), 0 0 20px rgba(${color}, 0.5);
     pointer-events: none;
     z-index: 100;
     left: ${x}px;
@@ -73,8 +73,8 @@ const createParticleElement = (x: number, y: number, color = DEFAULT_GLOW_COLOR)
 };
 
 const calculateSpotlightValues = (radius: number) => ({
-  proximity: radius * 0.5,
-  fadeDistance: radius * 0.75
+  proximity: radius * 0.6,
+  fadeDistance: radius * 0.85
 });
 
 const updateCardGlowProperties = (card: HTMLElement, mouseX: number, mouseY: number, glow: number, radius: number) => {
@@ -108,8 +108,8 @@ const ParticleCard = ({
   particleCount = DEFAULT_PARTICLE_COUNT,
   glowColor = DEFAULT_GLOW_COLOR,
   enableTilt = true,
-  clickEffect = false,
-  enableMagnetism = false
+  clickEffect = true,
+  enableMagnetism = true
 }: ParticleCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const particlesRef = useRef<HTMLElement[]>([]);
@@ -163,11 +163,11 @@ const ParticleCard = ({
         cardRef.current.appendChild(clone);
         particlesRef.current.push(clone);
 
-        gsap.fromTo(clone, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(1.7)' });
+        gsap.fromTo(clone, { scale: 0, opacity: 0 }, { scale: 1.2, opacity: 1, duration: 0.3, ease: 'back.out(1.7)' });
 
         gsap.to(clone, {
-          x: (Math.random() - 0.5) * 100,
-          y: (Math.random() - 0.5) * 100,
+          x: (Math.random() - 0.5) * 120,
+          y: (Math.random() - 0.5) * 120,
           rotation: Math.random() * 360,
           duration: 2 + Math.random() * 2,
           ease: 'none',
@@ -176,13 +176,13 @@ const ParticleCard = ({
         });
 
         gsap.to(clone, {
-          opacity: 0.3,
+          opacity: 0.4,
           duration: 1.5,
           ease: 'power2.inOut',
           repeat: -1,
           yoyo: true
         });
-      }, index * 100);
+      }, index * 80);
 
       timeoutsRef.current.push(timeoutId);
     });
@@ -199,8 +199,8 @@ const ParticleCard = ({
 
       if (enableTilt) {
         gsap.to(element, {
-          rotateX: 5,
-          rotateY: 5,
+          rotateX: 6,
+          rotateY: 6,
           duration: 0.3,
           ease: 'power2.out',
           transformPerspective: 1000
@@ -241,8 +241,8 @@ const ParticleCard = ({
       const centerY = rect.height / 2;
 
       if (enableTilt) {
-        const rotateX = ((y - centerY) / centerY) * -10;
-        const rotateY = ((x - centerX) / centerX) * 10;
+        const rotateX = ((y - centerY) / centerY) * -12;
+        const rotateY = ((x - centerX) / centerX) * 12;
 
         gsap.to(element, {
           rotateX,
@@ -254,8 +254,8 @@ const ParticleCard = ({
       }
 
       if (enableMagnetism) {
-        const magnetX = (x - centerX) * 0.05;
-        const magnetY = (y - centerY) * 0.05;
+        const magnetX = (x - centerX) * 0.08;
+        const magnetY = (y - centerY) * 0.08;
 
         magnetismAnimationRef.current = gsap.to(element, {
           x: magnetX,
@@ -286,7 +286,7 @@ const ParticleCard = ({
         width: ${maxDistance * 2}px;
         height: ${maxDistance * 2}px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(${glowColor}, 0.4) 0%, rgba(${glowColor}, 0.2) 30%, transparent 70%);
+        background: radial-gradient(circle, rgba(${glowColor}, 0.6) 0%, rgba(${glowColor}, 0.25) 35%, transparent 70%);
         left: ${x - maxDistance}px;
         top: ${y - maxDistance}px;
         pointer-events: none;
@@ -353,7 +353,6 @@ const GlobalSpotlight = ({
   glowColor = DEFAULT_GLOW_COLOR
 }: GlobalSpotlightProps) => {
   const spotlightRef = useRef<HTMLDivElement | null>(null);
-  const isInsideSection = useRef(false);
 
   useEffect(() => {
     if (disableAnimations || !gridRef?.current || !enabled) return;
@@ -362,16 +361,14 @@ const GlobalSpotlight = ({
     spotlight.className = 'global-spotlight';
     spotlight.style.cssText = `
       position: fixed;
-      width: 800px;
-      height: 800px;
+      width: ${spotlightRadius * 2}px;
+      height: ${spotlightRadius * 2}px;
       border-radius: 50%;
       pointer-events: none;
       background: radial-gradient(circle,
-        rgba(${glowColor}, 0.15) 0%,
-        rgba(${glowColor}, 0.08) 15%,
-        rgba(${glowColor}, 0.04) 25%,
-        rgba(${glowColor}, 0.02) 40%,
-        rgba(${glowColor}, 0.01) 65%,
+        rgba(${glowColor}, 0.22) 0%,
+        rgba(${glowColor}, 0.1) 25%,
+        rgba(${glowColor}, 0.03) 50%,
         transparent 70%
       );
       z-index: 200;
@@ -390,7 +387,6 @@ const GlobalSpotlight = ({
       const mouseInside =
         rect && e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
 
-      isInsideSection.current = mouseInside || false;
       const cards = gridRef.current.querySelectorAll<HTMLElement>('.magic-bento-card');
 
       if (!mouseInside) {
@@ -438,9 +434,9 @@ const GlobalSpotlight = ({
 
       const targetOpacity =
         minDistance <= proximity
-          ? 0.8
+          ? 0.95
           : minDistance <= fadeDistance
-            ? ((fadeDistance - minDistance) / (fadeDistance - proximity)) * 0.8
+            ? ((fadeDistance - minDistance) / (fadeDistance - proximity)) * 0.95
             : 0;
 
       gsap.to(spotlightRef.current, {
@@ -451,7 +447,6 @@ const GlobalSpotlight = ({
     };
 
     const handleMouseLeave = () => {
-      isInsideSection.current = false;
       gridRef.current?.querySelectorAll<HTMLElement>('.magic-bento-card').forEach(card => {
         card.style.setProperty('--glow-intensity', '0');
       });
@@ -515,14 +510,14 @@ interface MagicBentoProps {
 
 const MagicBento = ({
   items = DEFAULT_CARD_DATA,
-  textAutoHide = true,
+  textAutoHide = false,
   enableStars = true,
   enableSpotlight = true,
   enableBorderGlow = true,
   disableAnimations = false,
   spotlightRadius = DEFAULT_SPOTLIGHT_RADIUS,
   particleCount = DEFAULT_PARTICLE_COUNT,
-  enableTilt = false,
+  enableTilt = true,
   glowColor = DEFAULT_GLOW_COLOR,
   clickEffect = true,
   enableMagnetism = true
@@ -549,7 +544,7 @@ const MagicBento = ({
           const cardProps = {
             className: baseClassName,
             style: {
-              backgroundColor: card.color || '#12181F',
+              backgroundColor: card.color || 'rgba(27, 33, 40, 0.95)',
               '--glow-color': glowColor
             } as React.CSSProperties
           };
@@ -568,7 +563,7 @@ const MagicBento = ({
               >
                 <div className="magic-bento-card__header">
                   <div className="magic-bento-card__label">{card.label}</div>
-                  {card.icon ? <div className="text-[#9C8552]">{card.icon}</div> : null}
+                  {card.icon ? <div className="text-[#D4AF37]">{card.icon}</div> : null}
                 </div>
                 <div className="magic-bento-card__content">
                   <h2 className="magic-bento-card__title">{card.title}</h2>
@@ -582,7 +577,7 @@ const MagicBento = ({
             <div key={index} {...cardProps}>
               <div className="magic-bento-card__header">
                 <div className="magic-bento-card__label">{card.label}</div>
-                {card.icon ? <div className="text-[#9C8552]">{card.icon}</div> : null}
+                {card.icon ? <div className="text-[#D4AF37]">{card.icon}</div> : null}
               </div>
               <div className="magic-bento-card__content">
                 <h2 className="magic-bento-card__title">{card.title}</h2>
