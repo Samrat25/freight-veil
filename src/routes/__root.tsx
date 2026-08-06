@@ -11,7 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { FreightProvider } from "../lib/freight-store";
+import { FreightProvider, useFreight } from "../lib/freight-store";
 import { SiteHeader } from "../components/freight/SiteHeader";
 import { MoltenBackground } from "../components/freight/MoltenBackground";
 import { SiteSidebar } from "../components/freight/SiteSidebar";
@@ -130,25 +130,34 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function RootComponentContent() {
+  const { wallet, role } = useFreight();
+  const isDashboardActive = Boolean(wallet && role);
+
+  return (
+    <div className="min-h-screen relative">
+      <MoltenBackground />
+      <div className="relative z-10">
+        {!isDashboardActive ? <SiteHeader /> : null}
+        <div className="flex">
+          {isDashboardActive ? <SiteSidebar /> : null}
+          <main className="flex-1 min-w-0">
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
       <FreightProvider>
-        <div className="min-h-screen relative">
-          <MoltenBackground />
-          <div className="relative z-10">
-            <SiteHeader />
-            <div className="flex">
-              <SiteSidebar />
-              <main className="flex-1 min-w-0">
-                {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-                <Outlet />
-              </main>
-            </div>
-          </div>
-        </div>
+        <RootComponentContent />
       </FreightProvider>
     </QueryClientProvider>
   );
