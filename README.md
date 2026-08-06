@@ -12,13 +12,13 @@
 
 ---
 
-## 📜 Verifiable Contract Addresses
+## 📜 Verifiable Contract Addresses & Explorer Links
 
-| Network | Contract Address | Status |
-| :--- | :--- | :--- |
-| **Midnight Preview Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | **Active / Deployed** |
-| **Midnight Preprod Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | **Active / Deployed** |
-| **Local Undeployed (Docker)** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | **Active** |
+| Network | Contract Address | Midnight Explorer Link | Status |
+| :--- | :--- | :--- | :--- |
+| **Midnight Preview Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | [View on Preview Explorer](https://explorer.preview.midnight.network/address/0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4) | **Active / Deployed** |
+| **Midnight Preprod Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | [View on Preprod Explorer](https://explorer.preprod.midnight.network/address/0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4) | **Active / Deployed** |
+| **Local Undeployed (Docker)** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | `http://localhost:8080` | **Active** |
 
 ---
 
