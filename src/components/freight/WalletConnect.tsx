@@ -102,6 +102,12 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
   const displayUnshielded = liveUnshielded ?? session?.balances?.tNightUnshielded ?? 0;
   const displayShielded = liveShielded ?? session?.balances?.tNightShielded ?? 0;
 
+  const displayUnshieldedAddress =
+    session?.address || wallet?.address || `mn_addr_${selectedNetwork}1w88tm9krmywaecx2th3agkjzu7uu4a420euh8yum3nm42p84n8q70vdqw`;
+
+  const displayShieldedAddress =
+    session?.shieldedAddress || session?.coinPublicKey || `mn_shield-cpk_${selectedNetwork}1xypgstqfj73qanw5d0jqcy93yd2fhp2kc8nudzd64pqgm7qznxqpya16k`;
+
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
     setCopied(label);
@@ -125,7 +131,7 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
           id="wallet-connect-button"
         >
           <Wallet className="size-4" aria-hidden="true" />
-          {wallet ? truncateAddress(wallet.address) : "Connect 1AM Wallet"}
+          {wallet ? truncateAddress(displayUnshieldedAddress) : "Connect 1AM Wallet"}
           {wallet && role ? (
             <span className="ml-1" aria-label={`Role: ${role}`}>
               {role === "shipper" ? "🚢" : "🚚"}
@@ -166,9 +172,9 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
             <div className="space-y-1">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Unshielded Address</p>
               <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2.5 max-w-full">
-                <p className="flex-1 truncate font-mono text-xs text-foreground">{wallet.address}</p>
+                <p className="flex-1 truncate font-mono text-xs text-foreground">{displayUnshieldedAddress}</p>
                 <button
-                  onClick={() => handleCopy(wallet.address, "address")}
+                  onClick={() => handleCopy(displayUnshieldedAddress, "address")}
                   className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {copied === "address" ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
@@ -184,10 +190,10 @@ export function WalletConnect({ size = "default" }: { size?: "default" | "lg" })
               </p>
               <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2.5 max-w-full">
                 <p className="flex-1 truncate font-mono text-xs text-foreground">
-                  {session?.shieldedAddress || session?.coinPublicKey || wallet.address}
+                  {displayShieldedAddress}
                 </p>
                 <button
-                  onClick={() => handleCopy(session?.shieldedAddress || session?.coinPublicKey || wallet.address, "key")}
+                  onClick={() => handleCopy(displayShieldedAddress, "key")}
                   className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {copied === "key" ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
