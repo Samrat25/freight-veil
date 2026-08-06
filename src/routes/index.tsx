@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { WalletConnect } from "@/components/freight/WalletConnect";
+import GradientText from "@/components/ui/GradientText";
 import { ShieldCheck, Lock, Cpu, CheckCircle2, ArrowUpRight, Sparkles, Terminal, FileCode, Zap, Layers } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -137,12 +138,16 @@ function Landing() {
 
         {/* Main Heading */}
         <h1
-          className="text-5xl sm:text-6xl lg:text-[3.4rem] font-medium leading-[1.1] tracking-tight transition-all duration-300"
+          className="text-5xl sm:text-6xl lg:text-[3.4rem] font-medium leading-[1.1] tracking-tight transition-all duration-300 flex justify-center"
           style={{ fontFamily: "'Fraunces', serif" }}
         >
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#EDE9DC] via-[#F3EFE0] to-[#D4AF37]">
+          <GradientText
+            colors={["#EDE9DC", "#D4AF37", "#9C8552", "#34D399", "#EDE9DC"]}
+            animationSpeed={6}
+            showBorder={false}
+          >
             Trust Through Transit.
-          </span>
+          </GradientText>
         </h1>
 
         {/* Subtitle */}

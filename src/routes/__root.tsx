@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { FreightProvider } from "../lib/freight-store";
 import { SiteHeader } from "../components/freight/SiteHeader";
 import { MoltenBackground } from "../components/freight/MoltenBackground";
+import { SiteSidebar } from "../components/freight/SiteSidebar";
 
 function NotFoundComponent() {
   return (
@@ -139,8 +140,13 @@ function RootComponent() {
           <MoltenBackground />
           <div className="relative z-10">
             <SiteHeader />
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-            <Outlet />
+            <div className="flex">
+              <SiteSidebar />
+              <main className="flex-1 min-w-0">
+                {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+                <Outlet />
+              </main>
+            </div>
           </div>
         </div>
       </FreightProvider>
