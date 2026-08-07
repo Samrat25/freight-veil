@@ -185,26 +185,7 @@ Open **`http://localhost:8080`** in your browser.
 
 ---
 
-## 🧪 Test Suite Results (8/8 Passing)
 
-```
- RUN  v2.1.9
-
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 1. registerAsShipper succeeds and stores commitment
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 2. registerAsCarrier succeeds and stores commitment
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 3. createShipmentBatch succeeds for registered shipper with sufficient budget
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 4. createShipmentBatch reverts for a carrier-role wallet
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 5. settleBatch succeeds for registered carrier with valid rate*distance <= cost
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 6. settleBatch reverts for a shipper-role wallet
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 7. settleBatch reverts on a second call against the same batch (nullifier reuse)
- ✓ tests/freightveil.test.ts > FreightVeil Contract > 8. disputeBatch succeeds only for the original shipper, reverts for anyone else
-
- Test Files  1 passed (1)
-      Tests  8 passed (8)
-   Duration  477ms
-```
-
-> **Screenshot**: See [`screenshots/tests-passing.png`](./screenshots/tests-passing.png) for terminal output proof.
 
 ### Test Coverage
 
@@ -245,9 +226,6 @@ Open **`http://localhost:8080`** in your browser.
 
 ### My Claims (Carrier View)
 ![My Claims](./screenshots/my_claim_carrier.png)
-
-### Smart Contract Code
-![Contract](./screenshots/contract.png)
 
 ### Midnight Explorer Contract Page
 ![Midnight Explorer Contract](./screenshots/midnight_explorer_contract.png)
