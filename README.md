@@ -227,9 +227,6 @@ Open **`http://localhost:8080`** in your browser.
 ### My Claims (Carrier View)
 ![My Claims](./screenshots/my_claim_carrier.png)
 
-### Smart Contract Code
-![Contract](./screenshots/contract.png)
-
 ### Midnight Explorer Contract Page
 ![Midnight Explorer Contract](./screenshots/midnight_explorer_contract.png)
 
