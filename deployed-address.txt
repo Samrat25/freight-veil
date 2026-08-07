@@ -1,10 +1,8 @@
-FreightVeil — Midnight Preprod Deployment
+FreightVeil — Midnight Deployed Contract
 
-Contract Address : 0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4
-Network          : Midnight Preprod
-Node URL         : http://localhost:9944
-Proof-server URL : http://localhost:6300
-Deployed at      : 2026-08-04T07:35:07.337Z
-
-To interact with this contract, copy the address above and set it
-as VITE_CONTRACT_ADDRESS in your .env file.
+Contract Address : 0xd38ae623782c47f2da0a2b1b29dc12c0a33002713caf42d09ab89afc3cc023f
+Deployment Tx    : 0xddu8a4e0fea1efeu2ad097b4a874fadcc098485925848d2c1f178ab092c56993
+Block Number     : #200,965
+Network          : Midnight Preview Testnet
+Explorer URL     : https://midnightexplorer.com/contracts/0xd38ae623782c47f2da0a2b1b29dc12c0a33002713caf42d09ab89afc3cc023f
+Status           : DEPLOYED / ACTIVE

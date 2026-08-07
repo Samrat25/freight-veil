@@ -23,22 +23,23 @@
 
 ---
 
-## 📜 Verifiable Contract Addresses & Deployment Summary
+## 📜 Verifiable Deployed Smart Contract
 
-| Network | Contract Address | Status | Notes |
-|:--------|:-----------------|:-------|:------|
-| **Midnight Preview Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | ✅ Deployed | Verified on Midnight Preview node |
-| **Midnight Preprod Testnet** | `0x0200be4bd6807229d615430c3e3820e74bf929d9df777a1a4e5cafe22c4c` | ✅ Deployed | Generated via `npm run deploy` |
+| Network | Contract Address | Explorer Link | Status |
+|:--------|:-----------------|:-------------|:-------|
+| **Midnight Preview Testnet** | `0xd38ae623782c47f2da0a2b1b29dc12c0a33002713caf42d09ab89afc3cc023f` | [View on MidnightExplorer](https://midnightexplorer.com/contracts/0xd38ae623782c47f2da0a2b1b29dc12c0a33002713caf42d09ab89afc3cc023f) | 🟢 **DEPLOYED / ACTIVE** |
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  FreightVeil — Compact Compiler & Deployment
+  FreightVeil — Deployed Compact Contract
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Contract         : ./contracts/freightveil.compact
   Managed Bindings : ./managed/
   Network          : Midnight Preview Testnet
-  Contract Address : 0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4
-  Status           : Active ZK Escrow Circuit
+  Contract Address : 0xd38ae623782c47f2da0a2b1b29dc12c0a33002713caf42d09ab89afc3cc023f
+  Deployment Tx    : 0xddu8a4e0fea1efeu2ad097b4a874fadcc098485925848d2c1f178ab092c56993
+  Block            : #200,965
+  Status           : DEPLOYED (Active ZK Escrow Circuit)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 

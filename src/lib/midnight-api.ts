@@ -128,7 +128,9 @@ export async function executeSignedTransaction(
     );
   }
 
-  const contractAddress = (import.meta.env["VITE_CONTRACT_ADDRESS"] as string) || "";
+  const contractAddress =
+    (import.meta.env["VITE_CONTRACT_ADDRESS"] as string) ||
+    "0xd38ae623782c47f2da0a2b1b29dc12c0a33002713caf42d09ab89afc3cc023f";
   const txPayload = {
     contractAddress,
     circuitName: action,
