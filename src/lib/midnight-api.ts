@@ -130,7 +130,7 @@ export async function executeSignedTransaction(
 
   const contractAddress =
     (import.meta.env["VITE_CONTRACT_ADDRESS"] as string) ||
-    "0xd38ae623782c47f2da0a2b1b29dc12c0a33002713caf42d09ab89afc3cc023f";
+    "0x62a27ceda5eb600263e208768d5d285c659d47f2cd6b14a20c62b160f4da46f3";
   const txPayload = {
     contractAddress,
     circuitName: action,

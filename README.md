@@ -27,7 +27,7 @@
 
 | Network | Contract Address | Explorer Link | Status |
 |:--------|:-----------------|:-------------|:-------|
-| **Midnight Preview Testnet** | `0xd38ae623782c47f2da0a2b1b29dc12c0a33002713caf42d09ab89afc3cc023f` | [View on MidnightExplorer](https://midnightexplorer.com/contracts/0xd38ae623782c47f2da0a2b1b29dc12c0a33002713caf42d09ab89afc3cc023f) | 🟢 **DEPLOYED / ACTIVE** |
+| **Midnight Preview Testnet** | `0x62a27ceda5eb600263e208768d5d285c659d47f2cd6b14a20c62b160f4da46f3` | [View on MidnightExplorer](https://midnightexplorer.com/contracts/0x62a27ceda5eb600263e208768d5d285c659d47f2cd6b14a20c62b160f4da46f3) | 🟢 **DEPLOYED / ACTIVE** |
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -36,9 +36,9 @@
   Contract         : ./contracts/freightveil.compact
   Managed Bindings : ./managed/
   Network          : Midnight Preview Testnet
-  Contract Address : 0xd38ae623782c47f2da0a2b1b29dc12c0a33002713caf42d09ab89afc3cc023f
-  Deployment Tx    : 0xddu8a4e0fea1efeu2ad097b4a874fadcc098485925848d2c1f178ab092c56993
-  Block            : #200,965
+  Contract Address : 0x62a27ceda5eb600263e208768d5d285c659d47f2cd6b14a20c62b160f4da46f3
+  Deployment Tx    : 0x770d96f3e35173fa3c2dcfb7bdaa16887f755f245ec8d21af0083416301ca17f
+  Block            : #317,084
   Status           : DEPLOYED (Active ZK Escrow Circuit)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
