@@ -206,6 +206,39 @@ Open **`http://localhost:8080`** in your browser.
 | 7 | `settleBatch` reverts on double-claim | **Nullifier prevents re-settlement** |
 | 8 | `disputeBatch` only for owner | Only original shipper can dispute their own batch |
 
+> **Test Screenshot**: See [`screenshots/test_cases.png`](./screenshots/test_cases.png)
+
+---
+
+## 📸 Application Screenshots
+
+### Landing Page
+![Landing Page](./screenshots/landing_page.png)
+
+### Wallet Balance
+![Wallet Balance](./screenshots/wallet_ballance.png)
+
+### Shipper Dashboard
+![Shipper Dashboard](./screenshots/shipping_dashboard.png)
+
+### Create Shipment Batch (Escrow Batcher)
+![Create Shipment](./screenshots/create_shipment.png)
+
+### Settle Shipment
+![Settle Shipment](./screenshots/settle_shipment.png)
+
+### Carrier Claim Submission
+![Carrier Claim](./screenshots/claim_carrier.png)
+
+### My Claims (Carrier View)
+![My Claims](./screenshots/my_claim_carrier.png)
+
+### Smart Contract
+![Contract](./screenshots/contract.png)
+
+### Test Suite (8/8 Passing)
+![Test Cases](./screenshots/test_cases.png)
+
 ---
 
 ## 🎥 Demo Video
@@ -228,7 +261,7 @@ The demo shows:
 |---|------------|--------|
 | 1 | Public GitHub repository with complete README | ✅ [github.com/Samrat25/freight-veil](https://github.com/Samrat25/freight-veil) |
 | 2 | Live demo link | ✅ [freight-veil.vercel.app](https://freight-veil.vercel.app) |
-| 3 | Screenshot: test output (3+ tests passing) | ✅ 8/8 tests — see [`screenshots/`](./screenshots/) |
+| 3 | Screenshot: test output (3+ tests passing) | ✅ 8/8 tests — see [`screenshots/test_cases.png`](./screenshots/test_cases.png) |
 | 4 | CI/CD badge or workflow with passing runs | ✅ [GitHub Actions](https://github.com/Samrat25/freight-veil/actions) — badge above |
 | 5 | Demo video (1 minute) | ✅ [Google Drive link](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing) |
 | 6 | README "privacy model" section | ✅ Detailed observer analysis above |
@@ -240,3 +273,4 @@ The demo shows:
 ## 📄 License
 
 MIT © 2026 FreightVeil Contributors
+
