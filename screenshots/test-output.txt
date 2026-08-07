@@ -1,0 +1,17 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/SAMRAT NATTA/OneDrive/Desktop/freight-veil[39m
+
+ [32mΓ£ô[39m tests/freightveil.test.ts[2m > [22mFreightVeil Contract[2m > [22m1. registerAsShipper succeeds and stores commitment
+ [32mΓ£ô[39m tests/freightveil.test.ts[2m > [22mFreightVeil Contract[2m > [22m2. registerAsCarrier succeeds and stores commitment
+ [32mΓ£ô[39m tests/freightveil.test.ts[2m > [22mFreightVeil Contract[2m > [22m3. createShipmentBatch succeeds for registered shipper with sufficient budget
+ [32mΓ£ô[39m tests/freightveil.test.ts[2m > [22mFreightVeil Contract[2m > [22m4. createShipmentBatch reverts for a carrier-role wallet
+ [32mΓ£ô[39m tests/freightveil.test.ts[2m > [22mFreightVeil Contract[2m > [22m5. settleBatch succeeds for registered carrier with valid rate*distance <= cost
+ [32mΓ£ô[39m tests/freightveil.test.ts[2m > [22mFreightVeil Contract[2m > [22m6. settleBatch reverts for a shipper-role wallet
+ [32mΓ£ô[39m tests/freightveil.test.ts[2m > [22mFreightVeil Contract[2m > [22m7. settleBatch reverts on a second call against the same batch (nullifier reuse)
+ [32mΓ£ô[39m tests/freightveil.test.ts[2m > [22mFreightVeil Contract[2m > [22m8. disputeBatch succeeds only for the original shipper, reverts for anyone else
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m8 passed[39m[22m[90m (8)[39m
+[2m   Start at [22m 21:15:59
+[2m   Duration [22m 542ms[2m (transform 38ms, setup 0ms, collect 59ms, tests 6ms, environment 0ms, prepare 169ms)[22m
+

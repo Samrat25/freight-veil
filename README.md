@@ -1,55 +1,83 @@
 # 🚚 FreightVeil — Confidential Multi-Carrier Shipment Payouts
 
+[![FreightVeil CI](https://github.com/Samrat25/freight-veil/actions/workflows/compact-ci.yml/badge.svg)](https://github.com/Samrat25/freight-veil/actions/workflows/compact-ci.yml)
+[![Tests](https://img.shields.io/badge/tests-8%2F8_passing-brightgreen)](https://github.com/Samrat25/freight-veil)
+[![Live Demo](https://img.shields.io/badge/demo-freight--veil.vercel.app-blue)](https://freight-veil.vercel.app)
+[![Midnight](https://img.shields.io/badge/blockchain-Midnight_Network-purple)](https://midnight.network)
+
 > A privacy-preserving logistics payout dApp on Midnight blockchain where shippers escrow funds and carriers claim contracted rates — with zero rates, distances, or budgets exposed on-chain.
+
+**Chosen Idea**: [**Private Payroll / Splits**](./PRODUCT_PROPOSAL.md) — distribute funds without exposing amounts
 
 ---
 
 ## 🚀 Live Demo & Links
 
-- **Live Application**: [https://freight-veil.vercel.app](https://freight-veil.vercel.app)
-- **Demo Video**: [https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing)
-- **GitHub Repository**: [https://github.com/Samrat25/freight-veil](https://github.com/Samrat25/freight-veil)
+| Resource | Link |
+|----------|------|
+| **Live Application** | [https://freight-veil.vercel.app](https://freight-veil.vercel.app) |
+| **Demo Video (1 min)** | [Watch on Google Drive](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing) |
+| **GitHub Repository** | [https://github.com/Samrat25/freight-veil](https://github.com/Samrat25/freight-veil) |
+| **Product Proposal** | [PRODUCT_PROPOSAL.md](./PRODUCT_PROPOSAL.md) |
+| **CI/CD Workflow** | [GitHub Actions](https://github.com/Samrat25/freight-veil/actions) |
 
 ---
 
 ## 📜 Verifiable Contract Addresses & Explorer Links
 
-| Network | Contract Address | Midnight Explorer Link | Status |
-| :--- | :--- | :--- | :--- |
-| **Midnight Preview Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | [View on Preview Explorer](https://explorer.preview.midnight.network/address/0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4) | **Active / Deployed** |
-| **Midnight Preprod Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | [View on Preprod Explorer](https://explorer.preprod.midnight.network/address/0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4) | **Active / Deployed** |
-| **Local Undeployed (Docker)** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | `http://localhost:8080` | **Active** |
+| Network | Contract Address | Explorer Link | Status |
+|:--------|:-----------------|:-------------|:-------|
+| **Midnight Preview Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | [View on Preview Explorer](https://explorer.preview.midnight.network/address/0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4) | ✅ Active |
+| **Midnight Preprod Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | [View on Preprod Explorer](https://explorer.preprod.midnight.network/address/0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4) | ✅ Active |
 
 ---
 
 ## 💡 What FreightVeil Does
 
-FreightVeil is a decentralized logistics payout platform built on the Midnight blockchain. It allows logistics shippers to lock multi-carrier freight payouts in smart contracts and carriers to claim their contracted payout rates. Financial terms (per-km rates, distances, total budget, profit margins) are verified locally inside browser Zero-Knowledge circuits before settlement, ensuring zero financial leakages to competitors, public block explorers, or off-chain databases.
+FreightVeil is a decentralized logistics payout platform built on the **Midnight blockchain**. It implements the **"Private Payroll / Splits"** pattern for freight logistics:
+
+- **Shippers** lock multi-carrier freight budgets in shielded smart contract escrow
+- **Carriers** claim per-leg contracted payouts by proving `rate × distance ≤ cost` inside ZK circuits
+- **Nobody** — not block explorers, not competitors, not other carriers — can see individual rates, distances, or payout amounts
+
+All financial terms are verified locally inside browser Zero-Knowledge circuits before settlement, ensuring **zero financial leakage** to competitors, public block explorers, or off-chain databases.
 
 ---
 
 ## 🔒 Privacy Model
 
-- **What is PUBLIC**:
-  - Batch ID (`Bytes<32>`)
-  - Batch status (`locked` = 0, `settled` = 1, `disputed` = 2)
-  - Shipper identity commitment (hash of public key derived from secret key)
-  - Carrier identity commitment (hash of public key derived from secret key)
-  - Nullifier hash (`spentNullifiers` - anti double-claim protection)
-  - Stealth payout address (`deriveStealthAddress` - unlinks carrier persistent wallet from payout)
+### What an Observer CAN Learn (Public Ledger State)
 
-- **What is PRIVATE**:
-  - Shipper's total allocated budget (`getShipperBudget`)
-  - Contracted freight cost (`getTotalFreightCost`)
-  - Carrier's agreed per-km rate (`getCarrierRate`)
-  - Leg distance traveled in km (`getCarrierDistance`)
-  - Local wallet secret key (`localSecretKey`)
+| Data Point | Type | What It Reveals |
+|-----------|------|----------------|
+| Batch ID | `Bytes<32>` hash | That a settlement batch exists (not its contents) |
+| Batch Status | Enum: `locked`/`settled`/`disputed` | Current lifecycle stage of the batch |
+| Shipper Commitment | Hash of public key | That a shipper registered (not who they are) |
+| Carrier Commitment | Hash of public key | That a carrier registered (not who they are) |
+| Nullifier Hash | Derived hash | That a batch was settled once (prevents replay) |
+| Stealth Payout Address | Derived address | An unlinkable one-time address (cannot trace to carrier) |
+| Batch Count | Integer | How many total batches exist on the contract |
 
-- **What the user PROVES without revealing**:
-  - **Shipper Proves**: Allocated budget is $\ge$ contracted freight cost ($\text{budget} \ge \text{cost}$).
-  - **Carrier Proves**: Claimed rate $\times$ distance is $\le$ contracted cost ($\text{rate} \times \text{distance} \le \text{cost}$).
-  - **Role Membership**: Caller holds a valid registered shipper/carrier identity commitment without revealing raw wallet address or private key.
-  - **Nullifier Protection**: Spent nullifier prevents double-claiming payouts for the same batch.
+### What an Observer CANNOT Learn (Private / ZK-Protected)
+
+| Data Point | Protection | Why It Matters |
+|-----------|-----------|---------------|
+| 💰 **Total shipper budget** | Private witness — never leaves browser | Competitors can't learn operational budgets |
+| 💰 **Per-km carrier rate** | Private witness inside ZK circuit | Carriers retain rate negotiation leverage |
+| 📏 **Distance per leg (km)** | Private witness inside ZK circuit | Route intelligence stays confidential |
+| 💸 **Payout amount per carrier** | Computed inside ZK circuit only | No one sees how much any carrier received |
+| 🪪 **Shipper real identity** | Hidden behind commitment hash | No PII on the public ledger |
+| 🪪 **Carrier real identity** | Commitment hash + stealth address | Cannot link carrier wallet to any payout |
+| 🔑 **Wallet private key** | Never transmitted — local witness only | Stays in the browser wallet extension |
+
+### What the User PROVES Without Revealing
+
+| Proof | Statement | Private Inputs |
+|-------|-----------|---------------|
+| **Shipper Escrow** | `budget ≥ total_freight_cost` | Budget amount, freight cost |
+| **Carrier Claim** | `rate × distance ≤ cost` | Per-km rate, distance driven, contracted cost |
+| **Role Membership** | Caller holds valid registered commitment | Wallet secret key |
+| **Nullifier** | This batch hasn't been settled before | Batch + caller binding |
 
 ---
 
@@ -60,21 +88,63 @@ FreightVeil is a decentralized logistics payout platform built on the Midnight b
 
 ---
 
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        FreightVeil dApp                         │
+├────────────────────┬────────────────────┬───────────────────────┤
+│   Shipper Console  │  Carrier Console   │   Public Explorer     │
+│   - Lock escrow    │  - Submit claim    │   - View batch status │
+│   - Dispute batch  │  - Track payouts   │   - Verify proofs     │
+└────────┬───────────┴────────┬───────────┴───────────┬───────────┘
+         │                    │                       │
+         ▼                    ▼                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              1AM / Lace Wallet Extension (Browser)              │
+│  - Private key storage     - ZK proof generation (in-browser)   │
+│  - tNIGHT / tDUST balance  - Transaction signing popup         │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 Midnight Blockchain (Testnet)                    │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │              freightveil.compact Contract                 │   │
+│  │                                                           │   │
+│  │  Public State:              Private Witnesses:            │   │
+│  │  - batchStatus (Map)        - localSecretKey              │   │
+│  │  - shipperCommitment        - getShipperBudget()          │   │
+│  │  - carrierCommitment        - getTotalFreightCost()       │   │
+│  │  - spentNullifiers          - getCarrierRate()            │   │
+│  │  - batchCount               - getCarrierDistance()        │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## 🧰 Tech Stack
 
-- **Blockchain Network**: Midnight Network (Preview, Preprod, and Local Node Stack)
-- **Smart Contract Language**: Compact (Midnight ZK language)
-- **SDK & DApp Connector**: Midnight DApp Connector v4 API (`1AM` & `Lace` Wallet Extensions)
-- **Zero-Dust Fee Sponsorship**: `1AM ProofStation` WASM fee sponsorship service
-- **Frontend Framework**: React 19, Vite, TypeScript, Tailwind CSS, TanStack Router
-- **Off-Chain Layer**: Supabase PostgreSQL with RLS and Custom Wallet Signature Auth
+| Layer | Technology |
+|-------|-----------|
+| **Blockchain** | Midnight Network (Preview / Preprod Testnet) |
+| **Smart Contract** | Compact (Midnight's ZK circuit language) |
+| **Wallet** | 1AM / Lace DApp Connector API v4 |
+| **Frontend** | React 19, TypeScript, Vite, TanStack Router |
+| **Styling** | Tailwind CSS, Glassmorphism, GSAP animations |
+| **UI Components** | Radix UI, React Bits (MoltenMetal, GradientText, MagicBento) |
+| **Off-chain DB** | Supabase PostgreSQL with Row-Level Security |
+| **CI/CD** | GitHub Actions (4 jobs: build, test, supabase, contract) |
+| **Deployment** | Vercel (SPA with client-side routing rewrites) |
 
 ---
 
 ## 📌 Prerequisites & Wallet Setup
 
-- **1AM / Lace Wallet Extension**: Download from [https://1am.xyz](https://1am.xyz) or [https://www.lace.io](https://www.lace.io)
-- **Supported Networks**: Midnight Preview, Preprod, Local Node
+1. Install **1AM Wallet** from [https://1am.xyz](https://1am.xyz) or **Lace Wallet** from [https://www.lace.io](https://www.lace.io)
+2. Connect to **Midnight Preview** or **Preprod** network
+3. Fund your wallet with testnet tNIGHT and tDUST tokens
 
 ---
 
@@ -91,15 +161,13 @@ npm install
 # 3. Configure environment variables
 cp .env.example .env
 
-# 4. Compile Compact contract & generate managed TypeScript bindings
-compact compile ./contracts/freightveil.compact ./managed
-
-# 5. Run Vitest test suite (8/8 tests passing)
+# 4. Run the full test suite (8/8 tests passing)
 npx vitest run
 
-# 6. Start local frontend dev server
+# 5. Start local development server
 npm run dev
 ```
+
 Open **`http://localhost:8080`** in your browser.
 
 ---
@@ -107,7 +175,7 @@ Open **`http://localhost:8080`** in your browser.
 ## 🧪 Test Suite Results (8/8 Passing)
 
 ```
- RUN  v2.1.9 C:/Users/SAMRAT NATTA/OneDrive/Desktop/freight-veil
+ RUN  v2.1.9
 
  ✓ tests/freightveil.test.ts > FreightVeil Contract > 1. registerAsShipper succeeds and stores commitment
  ✓ tests/freightveil.test.ts > FreightVeil Contract > 2. registerAsCarrier succeeds and stores commitment
@@ -120,24 +188,55 @@ Open **`http://localhost:8080`** in your browser.
 
  Test Files  1 passed (1)
       Tests  8 passed (8)
+   Duration  477ms
 ```
+
+> **Screenshot**: See [`screenshots/tests-passing.png`](./screenshots/tests-passing.png) for terminal output proof.
+
+### Test Coverage
+
+| # | Test Name | What It Verifies |
+|---|-----------|-----------------|
+| 1 | `registerAsShipper` succeeds | Shipper commitment stored on ledger |
+| 2 | `registerAsCarrier` succeeds | Carrier commitment stored on ledger |
+| 3 | `createShipmentBatch` succeeds | Shipper with budget ≥ cost can lock escrow |
+| 4 | `createShipmentBatch` reverts for carrier | Role-gating prevents unauthorized batch creation |
+| 5 | `settleBatch` succeeds | Carrier with valid `rate × distance ≤ cost` settles |
+| 6 | `settleBatch` reverts for shipper | Role-gating prevents shipper from settling |
+| 7 | `settleBatch` reverts on double-claim | **Nullifier prevents re-settlement** |
+| 8 | `disputeBatch` only for owner | Only original shipper can dispute their own batch |
 
 ---
 
 ## 🎥 Demo Video
 
-- **Video Walkthrough Link**: [Watch Demo Video on Google Drive](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing)
+- **Video Walkthrough (1 min)**: [Watch on Google Drive](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing)
+
+The demo shows:
+1. Landing page with WebGL MoltenMetal background
+2. 1AM wallet connection and balance display
+3. Role selection (Shipper / Carrier)
+4. Creating a shielded escrow batch
+5. Submitting a carrier leg claim
+6. Privacy model in action — rates and amounts hidden
 
 ---
 
-## 📋 Level 2 Submission Checklist
+## 📋 Submission Checklist
 
-- [x] **1AM / Lace wallet connect and disconnect working**
-- [x] **Circuit called from frontend, proof generated and signed via extension popup**
-- [x] **Observable privacy behavior**: Private inputs (rates, distances, budgets) stay strictly local
-- [x] **Contract address in README.md** (`0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4`)
-- [x] **Live demo link in README.md** (`https://freight-veil.vercel.app`)
-- [x] **Demo video link in README.md** (`https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing`)
-- [x] **Privacy Claim section in README.md**
-- [x] **Minimum 8+ passing tests** in Vitest (`tests/freightveil.test.ts`)
-- [x] **Supabase RLS & Multi-Tenant Company Isolation** (`supabase/migrations/`)
+| # | Requirement | Status |
+|---|------------|--------|
+| 1 | Public GitHub repository with complete README | ✅ [github.com/Samrat25/freight-veil](https://github.com/Samrat25/freight-veil) |
+| 2 | Live demo link | ✅ [freight-veil.vercel.app](https://freight-veil.vercel.app) |
+| 3 | Screenshot: test output (3+ tests passing) | ✅ 8/8 tests — see [`screenshots/`](./screenshots/) |
+| 4 | CI/CD badge or workflow with passing runs | ✅ [GitHub Actions](https://github.com/Samrat25/freight-veil/actions) — badge above |
+| 5 | Demo video (1 minute) | ✅ [Google Drive link](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing) |
+| 6 | README "privacy model" section | ✅ Detailed observer analysis above |
+| 7 | Product proposal submitted | ✅ [PRODUCT_PROPOSAL.md](./PRODUCT_PROPOSAL.md) |
+| 8 | Minimum 10 meaningful commits | ✅ 40+ commits |
+
+---
+
+## 📄 License
+
+MIT © 2026 FreightVeil Contributors
