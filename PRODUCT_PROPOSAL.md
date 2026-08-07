@@ -170,5 +170,5 @@ FreightVeil is a **confidential multi-carrier settlement platform** built on the
 
 - **Live Demo**: [https://freight-veil.vercel.app](https://freight-veil.vercel.app)
 - **GitHub**: [https://github.com/Samrat25/freight-veil](https://github.com/Samrat25/freight-veil)
-- **Demo Video**: [Watch on Google Drive](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing)
+- **Demo Video**: [Watch on Google Drive](https://drive.google.com/file/d/16ssJqi7vh3jSoQmJ7WR9x_cNmJQLDdlN/view?usp=sharing)
 - **Contract on Midnight Explorer**: [View on Preview Explorer](https://explorer.preview.midnight.network/address/0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4)

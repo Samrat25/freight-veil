@@ -16,7 +16,7 @@
 | Resource | Link |
 |----------|------|
 | **Live Application** | [https://freight-veil.vercel.app](https://freight-veil.vercel.app) |
-| **Demo Video (1 min)** | [Watch on Google Drive](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing) |
+| **Demo Video (1 min)** | [Watch on Google Drive](https://drive.google.com/file/d/16ssJqi7vh3jSoQmJ7WR9x_cNmJQLDdlN/view?usp=sharing) |
 | **GitHub Repository** | [https://github.com/Samrat25/freight-veil](https://github.com/Samrat25/freight-veil) |
 | **Product Proposal** | [PRODUCT_PROPOSAL.md](./PRODUCT_PROPOSAL.md) |
 | **CI/CD Workflow** | [GitHub Actions](https://github.com/Samrat25/freight-veil/actions) |
@@ -259,7 +259,7 @@ Open **`http://localhost:8080`** in your browser.
 
 ## 🎥 Demo Video
 
-- **Video Walkthrough (1 min)**: [Watch on Google Drive](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing)
+- **Video Walkthrough (1 min)**: [Watch on Google Drive](https://drive.google.com/file/d/16ssJqi7vh3jSoQmJ7WR9x_cNmJQLDdlN/view?usp=sharing)
 
 The demo shows:
 1. Landing page with WebGL MoltenMetal background
@@ -279,7 +279,7 @@ The demo shows:
 | 2 | Live demo link | ✅ [freight-veil.vercel.app](https://freight-veil.vercel.app) |
 | 3 | Screenshot: test output (3+ tests passing) | ✅ 8/8 tests — see [`screenshots/test_cases.png`](./screenshots/test_cases.png) |
 | 4 | CI/CD badge or workflow with passing runs | ✅ [GitHub Actions](https://github.com/Samrat25/freight-veil/actions) — badge above |
-| 5 | Demo video (1 minute) | ✅ [Google Drive link](https://drive.google.com/file/d/176Yer44_DlC4WiHkqqNZYUBgogaRv9vk/view?usp=sharing) |
+| 5 | Demo video (1 minute) | ✅ [Google Drive link](https://drive.google.com/file/d/16ssJqi7vh3jSoQmJ7WR9x_cNmJQLDdlN/view?usp=sharing) |
 | 6 | README "privacy model" section | ✅ Detailed observer analysis above |
 | 7 | Product proposal submitted | ✅ [PRODUCT_PROPOSAL.md](./PRODUCT_PROPOSAL.md) |
 | 8 | Minimum 10 meaningful commits | ✅ 40+ commits |
