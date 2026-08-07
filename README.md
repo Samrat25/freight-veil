@@ -23,12 +23,24 @@
 
 ---
 
-## 📜 Verifiable Contract Addresses & Explorer Links
+## 📜 Verifiable Contract Addresses & Deployment Summary
 
-| Network | Contract Address | Explorer Link | Status |
-|:--------|:-----------------|:-------------|:-------|
-| **Midnight Preview Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | [View on Preview Explorer](https://explorer.preview.midnight.network/address/0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4) | ✅ Active |
-| **Midnight Preprod Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | [View on Preprod Explorer](https://explorer.preprod.midnight.network/address/0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4) | ✅ Active |
+| Network | Contract Address | Status | Notes |
+|:--------|:-----------------|:-------|:------|
+| **Midnight Preview Testnet** | `0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4` | ✅ Deployed | Verified on Midnight Preview node |
+| **Midnight Preprod Testnet** | `0x0200be4bd6807229d615430c3e3820e74bf929d9df777a1a4e5cafe22c4c` | ✅ Deployed | Generated via `npm run deploy` |
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  FreightVeil — Compact Compiler & Deployment
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Contract         : ./contracts/freightveil.compact
+  Managed Bindings : ./managed/
+  Network          : Midnight Preview Testnet
+  Contract Address : 0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4
+  Status           : Active ZK Escrow Circuit
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
 
 ---
 
