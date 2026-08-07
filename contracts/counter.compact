@@ -1,0 +1,32 @@
+// =============================================================================
+// Counter Compact Contract — Midnight Zero-Knowledge Smart Contract
+// =============================================================================
+// PUBLIC LEDGER STATE:
+//   - count (Uint<64>): On-chain publicly visible counter value.
+//
+// PRIVATE WITNESS INPUT:
+//   - incrementBy (Uint<64>): Private input supplied by caller locally.
+//
+// DISCLOSE USAGE:
+//   - disclose(incrementBy): Explicitly discloses private increment step value
+//     to perform verifiable on-chain arithmetic while maintaining caller privacy.
+// =============================================================================
+
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+// Public ledger state
+export ledger count: Uint<64>;
+
+// Circuit: Increments count with a private witness input
+export circuit increment(incrementBy: Uint<64>): [] {
+    count = count + disclose(incrementBy);
+}
+
+// Circuit: Decrements count safely
+export circuit decrement(decrementBy: Uint<64>): [] {
+    const amount = disclose(decrementBy);
+    assert count >= amount "Counter underflow error";
+    count = count - amount;
+}
