@@ -21,12 +21,12 @@ export ledger count: Uint<64>;
 
 // Circuit: Increments count with a private witness input
 export circuit increment(incrementBy: Uint<64>): [] {
-    count = count + disclose(incrementBy);
+    count = (count + disclose(incrementBy)) as Uint<64>;
 }
 
 // Circuit: Decrements count safely
 export circuit decrement(decrementBy: Uint<64>): [] {
     const amount = disclose(decrementBy);
-    assert count >= amount "Counter underflow error";
-    count = count - amount;
+    assert(count >= amount, "Counter underflow error");
+    count = (count - amount) as Uint<64>;
 }

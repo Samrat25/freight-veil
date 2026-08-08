@@ -1,8 +1,9 @@
-pragma language_version >= 0.16 && <= 0.25;
+pragma language_version >= 0.23;
+
 import CompactStandardLibrary;
 
 // ============ PUBLIC LEDGER STATE ============
-export ledger batchCount: Counter;
+export ledger batchCount: Uint<64>;
 export ledger batchStatus: Map<Bytes<32>, Uint<8>>;        // 0=locked, 1=settled, 2=disputed
 export ledger shipperCommitment: Map<Bytes<32>, Bytes<32>>; // batchId -> shipper role-id
 export ledger carrierCommitment: Map<Bytes<32>, Bytes<32>>; // batchId -> carrier role-id
@@ -15,7 +16,6 @@ witness getShipperBudget(): Uint<64>;
 witness getTotalFreightCost(): Uint<64>;
 witness getCarrierRate(): Uint<64>;
 witness getCarrierDistance(): Uint<64>;
-witness getPayoutSplit(): [Uint<64>];        // per-carrier computed payouts (multi-leg)
 witness localSecretKey(): Bytes<32>;
 witness deriveStealthAddress(seed: Bytes<32>): Bytes<32>;  // one-time payout address
 
@@ -23,54 +23,55 @@ witness deriveStealthAddress(seed: Bytes<32>): Bytes<32>;  // one-time payout ad
 
 // --- Registration: run once per wallet, establishes role commitment ---
 export circuit registerAsShipper(): [] {
-  let id = disclose(publicKey(localSecretKey(), 0 as Field as Bytes<32>));
+  const id = disclose(persistentHash<Bytes<32>>(localSecretKey()));
   shipperRole.insert(id, id);
 }
 
 export circuit registerAsCarrier(): [] {
-  let id = disclose(publicKey(localSecretKey(), 1 as Field as Bytes<32>));
+  const id = disclose(persistentHash<Bytes<32>>(localSecretKey()));
   carrierRole.insert(id, id);
 }
 
 // --- Shipper-only: create a batch ---
 export circuit createShipmentBatch(batchId: Bytes<32>): [] {
-  let callerId = disclose(publicKey(localSecretKey(), 0 as Field as Bytes<32>));
-  assert shipperRole.member(callerId) : "caller is not a registered shipper";
-  assert getShipperBudget() >= getTotalFreightCost() : "insufficient budget";
+  const callerId = disclose(persistentHash<Bytes<32>>(localSecretKey()));
+  const publicBatchId = disclose(batchId);
+  assert(shipperRole.member(callerId), "caller is not a registered shipper");
+  assert(getShipperBudget() >= getTotalFreightCost(), "insufficient budget");
 
-  shipperCommitment.insert(batchId, callerId);
-  batchStatus.insert(batchId, disclose(0 as Uint<8>));
-  batchCount.increment(1);
+  shipperCommitment.insert(publicBatchId, callerId);
+  batchStatus.insert(publicBatchId, disclose(0 as Uint<8>));
+  batchCount = (batchCount + 1) as Uint<64>;
 }
 
 // --- Carrier-only: settle / claim payout, with nullifier + stealth address ---
 export circuit settleBatch(batchId: Bytes<32>): [] {
-  let callerId = disclose(publicKey(localSecretKey(), 1 as Field as Bytes<32>));
-  assert carrierRole.member(callerId) : "caller is not a registered carrier";
-  assert batchStatus.lookup(batchId) == (0 as Uint<8>) : "batch not lockable";
+  const callerId = disclose(persistentHash<Bytes<32>>(localSecretKey()));
+  const publicBatchId = disclose(batchId);
+  assert(carrierRole.member(callerId), "caller is not a registered carrier");
+  assert(batchStatus.lookup(publicBatchId) == (0 as Uint<8>), "batch not lockable");
 
   // private-only arithmetic check — rate/distance/cost never touch the ledger
-  assert getCarrierRate() * getCarrierDistance() <= getTotalFreightCost()
-    : "claim exceeds contracted rate";
+  assert(getCarrierRate() * getCarrierDistance() <= getTotalFreightCost(), "claim exceeds contracted rate");
 
   // anti double-claim: nullifier derived from batch + caller, spendable once
-  let nullifier = disclose(publicKey(batchId, 99));
-  assert !spentNullifiers.member(nullifier) : "batch already settled";
+  const nullifier = disclose(persistentHash<Bytes<32>>(batchId));
+  assert(!spentNullifiers.member(nullifier), "batch already settled");
   spentNullifiers.insert(nullifier, disclose(1 as Uint<8>));
 
   // stealth payout address — breaks link between carrier's persistent wallet
   // and this specific payout; only the one-time address is disclosed
-  let payoutAddr = disclose(deriveStealthAddress(batchId));
-  void payoutAddr;
+  const payoutAddr = disclose(deriveStealthAddress(batchId));
 
-  carrierCommitment.insert(batchId, callerId);
-  batchStatus.insert(batchId, disclose(1 as Uint<8>));
+  carrierCommitment.insert(publicBatchId, callerId);
+  batchStatus.insert(publicBatchId, disclose(1 as Uint<8>));
 }
 
 // --- Shipper-only: dispute their own batch ---
 export circuit disputeBatch(batchId: Bytes<32>): [] {
-  let callerId = disclose(publicKey(localSecretKey(), 0 as Field as Bytes<32>));
-  assert shipperCommitment.lookup(batchId) == callerId : "not your batch";
-  assert batchStatus.lookup(batchId) == (0 as Uint<8>) : "not disputable";
-  batchStatus.insert(batchId, disclose(2 as Uint<8>));
+  const callerId = disclose(persistentHash<Bytes<32>>(localSecretKey()));
+  const publicBatchId = disclose(batchId);
+  assert(shipperCommitment.lookup(publicBatchId) == callerId, "not your batch");
+  assert(batchStatus.lookup(publicBatchId) == (0 as Uint<8>), "not disputable");
+  batchStatus.insert(publicBatchId, disclose(2 as Uint<8>));
 }
