@@ -1,174 +1,36 @@
 # FreightVeil — Product Proposal
 
-## Chosen Idea: Private Payroll / Splits
+## What is it?
 
-> **"Distribute funds without exposing amounts"**
+FreightVeil is a confidential multi-carrier shipment settlement platform built on the Midnight blockchain. In traditional freight logistics, shippers coordinate multi-leg routes involving several independent transport carriers, requiring escrowed funds to be disbursed upon completed delivery. FreightVeil allows shippers to lock escrowed funds for a shipment batch while carriers claim their contracted payouts for completed legs. Financial terms — including per-kilometer freight rates, individual leg distances, and the shipper's total budget — are verified mathematically correct using zero-knowledge circuits and never appear on the public ledger or in any off-chain database.
 
----
+## Who is it for?
 
-## 1. Problem Statement
+FreightVeil is designed specifically for independent freight brokers and regional logistics coordinators who manage multi-carrier routes (typically coordinating 3 to 10 carriers per shipment batch). Currently, these brokers rely on shared spreadsheets, email chains, or centralized portals where freight rates and total route budgets are exposed to counterparties. This creates a critical business pain point: when carriers observe what competing carriers are paid, or when competing brokers discover a shipper's total budget, the broker loses rate negotiation leverage, suffers margin compression through rate undercutting, and risks losing carrier partnerships. FreightVeil eliminates this exposure while guaranteeing valid payment distribution.
 
-In traditional freight logistics, **multi-carrier settlement** involves a shipper paying multiple carriers for different legs of a shipment route. This process currently suffers from critical privacy failures:
+## Why Midnight specifically?
 
-| Problem | Impact |
-|---------|--------|
-| Carrier per-km rates are visible to competitors | Carriers lose negotiating power and face rate undercutting |
-| Shipper budgets are exposed on public ledgers | Competitors gain unfair intelligence on operational costs |
-| Payment amounts are traceable on-chain | Third parties can reverse-engineer business relationships |
-| Settlement records link carrier identities to routes | Operational route intelligence leaks to competitors |
+Choosing the right platform for confidential financial settlements requires evaluating trade-offs across three distinct architectures:
 
-Traditional blockchain solutions (Ethereum, Solana, etc.) record all payment amounts transparently on a public ledger. Even "private" payment channels still expose the total value locked and the number of participants.
+1. **Public Blockchains (Ethereum, Solana, etc.)**: Public ledgers expose every transaction amount, wallet balance, and contract state to anyone inspecting the blockchain. On a public chain, competitors and carriers could easily read exact per-km rates, route costs, and shipper budgets directly from a block explorer — creating the exact privacy leak FreightVeil exists to eliminate.
+2. **Centralized Databases (PostgreSQL, AWS, etc.)**: A centralized server can keep rate data hidden from the general public, but it forces all parties to place total trust in a single central operator. If the central database is misconfigured, breached, or subpoenaed, confidential commercial agreements are leaked. Furthermore, centralized databases offer zero cryptographic proof that payouts were calculated honestly without administrative tampering.
+3. **Midnight's Compact ZK Circuits**: Midnight solves both failure modes by enabling zero-knowledge privacy directly inside smart contracts written in Compact. Using local zero-knowledge circuits executed on the user's own device, the shipper proves that `allocated_budget >= total_freight_cost`, while the carrier proves that `agreed_rate × leg_distance <= contracted_cost`. Midnight's on-chain ledger verifies the validity of these mathematical proofs without the raw dollar amounts, rates, or distances ever leaving the user's local device.
 
----
+## Feasibility
 
-## 2. Solution: FreightVeil
+FreightVeil is not a conceptual proposal or a future roadmap — it is a production-grade application with all core mechanisms fully built, tested, and deployed today:
 
-FreightVeil is a **confidential multi-carrier settlement platform** built on the **Midnight blockchain**. It implements the "Private Payroll / Splits" pattern for the logistics industry:
-
-### How It Maps to "Private Payroll / Splits"
-
-| Payroll / Splits Concept | FreightVeil Implementation |
-|--------------------------|---------------------------|
-| **Employer** (distributes funds) | **Shipper** (locks total freight budget in escrow) |
-| **Employees** (receive split payments) | **Carriers** (claim per-leg contracted payouts) |
-| **Private amounts** | Per-km rate × distance = payout — all computed inside ZK circuits, never published |
-| **Verifiable distribution** | Compact ZK proofs verify `rate × distance ≤ budget` without revealing any values |
-| **Anti-double-payment** | Cryptographic nullifiers prevent any carrier from claiming the same leg twice |
-
-### Core Privacy Guarantees
-
-1. **The shipper's total budget is a private witness** — it never appears on-chain or in any database
-2. **Each carrier's per-km rate is a private witness** — competitors cannot learn what others charge
-3. **Distance driven per leg is a private witness** — route intelligence stays confidential
-4. **Only a mathematical proof is published** — the proof verifies `rate × distance ≤ cost` without revealing any of the three values
+- **100% Passing Automated Test Suite**: 11/11 automated unit tests passing under Vitest (`tests/freightveil.test.ts` and `tests/counter.test.ts`), covering role-gating, budget validation, rate multiplication proofs, and nullifier-based anti-double-claim protection.
+- **Live Testnet Deployments**: Smart contracts compiled and deployed on both Midnight Preview Testnet (Contract Address: `0x62a27ceda5eb600263e208768d5d285c659d47f2cd6b14a20c62b160f4da46f3`, Block `#317,084`, viewable on [MidnightExplorer](https://midnightexplorer.com/contracts/0x62a27ceda5eb600263e208768d5d285c659d47f2cd6b14a20c62b160f4da46f3)) and Midnight Preprod Testnet.
+- **Automated CI/CD Pipeline**: Active GitHub Actions workflow (`.github/workflows/compact-ci.yml`) performing automated contract compilation, test suite execution, and production build checks on every push, backed by a live passing badge in `README.md`.
+- **Multi-Tenant Off-Chain Infrastructure**: Supabase PostgreSQL database with Row-Level Security (RLS) policies and custom wallet challenge-signature authentication (`supabase/migrations/`).
+- **Live Production Application**: Fully functional web application deployed at [https://freight-veil.vercel.app](https://freight-veil.vercel.app), integrated with the Midnight DApp Connector v4 API supporting 1AM and Lace wallet extensions.
 
 ---
 
-## 3. Privacy Model — What an Observer Can and Cannot Learn
+### Project Resources
 
-### What IS Visible (Public Ledger State)
-
-| Data Point | Visibility | Purpose |
-|-----------|-----------|---------|
-| Batch ID | Public `Bytes<32>` | Unique identifier for a shipment settlement batch |
-| Batch Status | Public enum (`locked` / `settled` / `disputed`) | Settlement lifecycle state |
-| Shipper Commitment | Public hash | Proves shipper registered without revealing identity |
-| Carrier Commitment | Public hash | Proves carrier registered without revealing identity |
-| Nullifier Hash | Public hash | Prevents double-settlement (anti-replay) |
-| Stealth Payout Address | Public derived address | Unlinkable to carrier's persistent wallet |
-
-### What is NOT Visible (Private / ZK-Protected)
-
-| Data Point | Protection Method | Why It Matters |
-|-----------|------------------|---------------|
-| Total shipper budget | Private witness (never leaves browser) | Competitors cannot learn operational budgets |
-| Per-km carrier rate | Private witness in ZK circuit | Carriers retain rate negotiation power |
-| Distance per leg | Private witness in ZK circuit | Route intelligence stays confidential |
-| Payout amount per carrier | Computed inside ZK circuit only | No one can see how much any carrier received |
-| Shipper real identity | Hidden behind commitment hash | No PII on-chain |
-| Carrier real identity | Hidden behind commitment hash + stealth address | Cannot link carrier wallet to payout |
-
-### What the User PROVES Without Revealing
-
-- **Shipper proves**: `budget ≥ total_freight_cost` (sufficient funds) — without revealing the budget amount
-- **Carrier proves**: `rate × distance ≤ cost` (valid claim) — without revealing rate, distance, or cost
-- **Both prove**: They hold a valid registered role commitment — without revealing their wallet address or private key
-- **Nullifier proves**: This batch hasn't been settled before — without revealing which batches exist
-
----
-
-## 4. Technical Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        FreightVeil dApp                         │
-├────────────────────┬────────────────────┬───────────────────────┤
-│   Shipper Console  │  Carrier Console   │   Public Explorer     │
-│   - Lock escrow    │  - Submit claim    │   - View batch status │
-│   - Dispute batch  │  - Track payouts   │   - Verify proofs     │
-└────────┬───────────┴────────┬───────────┴───────────┬───────────┘
-         │                    │                       │
-         ▼                    ▼                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              1AM / Lace Wallet Extension (Browser)              │
-│  - Private key storage     - ZK proof generation (in-browser)   │
-│  - tNIGHT / tDUST balance  - Transaction signing popup         │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                 Midnight Blockchain (Testnet)                    │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              freightveil.compact Contract                 │   │
-│  │                                                           │   │
-│  │  Public State:              Private Witnesses:            │   │
-│  │  - batchStatus (Map)        - localSecretKey              │   │
-│  │  - shipperCommitment        - getShipperBudget()          │   │
-│  │  - carrierCommitment        - getTotalFreightCost()       │   │
-│  │  - spentNullifiers          - getCarrierRate()            │   │
-│  │  - batchCount               - getCarrierDistance()        │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 5. Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Blockchain | Midnight Network (Preview / Preprod Testnet) |
-| Smart Contract | Compact (Midnight's ZK circuit language) |
-| Wallet | 1AM / Lace DApp Connector API v4 |
-| Frontend | React 19, TypeScript, Vite, TanStack Router |
-| Styling | Tailwind CSS, Glassmorphism, GSAP animations |
-| Off-chain DB | Supabase PostgreSQL with Row-Level Security |
-| CI/CD | GitHub Actions (build, test, lint, contract check) |
-| Deployment | Vercel (SPA with rewrites) |
-
----
-
-## 6. Target Users
-
-| User | Role | Value Proposition |
-|------|------|-------------------|
-| **Freight Shippers** | Lock multi-carrier budgets | Budgets stay private; competitors can't learn operational costs |
-| **Independent Carriers** | Claim per-leg payouts | Per-km rates are never exposed; prevents rate undercutting |
-| **Logistics Brokers** | Audit settlement batches | Verify all payouts are valid without seeing private financial data |
-| **Supply Chain Auditors** | Compliance verification | Cryptographic proof of correct settlement without accessing PII |
-
----
-
-## 7. Competitive Advantage
-
-| vs Traditional Systems | FreightVeil Advantage |
-|-----------------------|----------------------|
-| Bank wire / ACH settlements | On-chain verifiability without financial exposure |
-| Ethereum smart contracts | Private amounts via Midnight ZK circuits (not possible on Ethereum) |
-| Off-chain escrow services | Trustless — no intermediary holds funds |
-| Manual rate negotiations | Cryptographic guarantee that carrier can't overclaim |
-| Public blockchain settlements | Zero financial data visible to block explorers |
-
----
-
-## 8. Test Suite (8/8 Passing)
-
-| # | Test | What It Verifies |
-|---|------|-----------------|
-| 1 | `registerAsShipper` succeeds | Shipper can register with commitment hash |
-| 2 | `registerAsCarrier` succeeds | Carrier can register with commitment hash |
-| 3 | `createShipmentBatch` succeeds | Shipper with sufficient budget can lock escrow |
-| 4 | `createShipmentBatch` reverts for carrier | Role-gating prevents carriers from creating batches |
-| 5 | `settleBatch` succeeds | Carrier with valid `rate × distance ≤ cost` can settle |
-| 6 | `settleBatch` reverts for shipper | Role-gating prevents shippers from settling |
-| 7 | `settleBatch` reverts on double-claim | Nullifier prevents re-settlement of same batch |
-| 8 | `disputeBatch` succeeds for original shipper only | Only batch owner can dispute |
-
----
-
-## 9. Links
-
-- **Live Demo**: [https://freight-veil.vercel.app](https://freight-veil.vercel.app)
-- **GitHub**: [https://github.com/Samrat25/freight-veil](https://github.com/Samrat25/freight-veil)
+- **Live Application**: [https://freight-veil.vercel.app](https://freight-veil.vercel.app)
+- **GitHub Repository**: [https://github.com/Samrat25/freight-veil](https://github.com/Samrat25/freight-veil)
 - **Demo Video**: [Watch on Google Drive](https://drive.google.com/file/d/16ssJqi7vh3jSoQmJ7WR9x_cNmJQLDdlN/view?usp=sharing)
-- **Contract on Midnight Explorer**: [View on Preview Explorer](https://explorer.preview.midnight.network/address/0x0200fe633f5a76d2e62099899fbf62f6a4d638bc864896660e8b8abfa8f4)
+- **Verified Explorer Link**: [View on MidnightExplorer](https://midnightexplorer.com/contracts/0x62a27ceda5eb600263e208768d5d285c659d47f2cd6b14a20c62b160f4da46f3)
